@@ -79,7 +79,7 @@ Optional database role in the SNOWFLAKE database:
 
 | Role | Why |
 |---|---|
-| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see step 5 below. Without it, suggestions use exact and alias matches only. |
+| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions, and only if **Test AI access** asks for it: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see step 5 below. Without AI access, suggestions use exact and alias matches only. |
 
 ## Get started in 5 minutes
 
@@ -157,23 +157,30 @@ The role running `SYSTEM$REFERENCE` needs all four privileges on the table.
 
 ### 5. (Optional) Turn on AI mapping suggestions
 
-Mappings -> **Suggest** always offers exact and alias matches. To add AI similarity, grant the app the
-embedding role (needs ACCOUNTADMIN) and turn on **Suggest mappings with Snowflake Cortex AI** in
-**Audit & Settings -> Settings** (setting `ai_suggestions_enabled`, off by default). **Test AI access** on
-the same tab (or `CALL <app>.core.check_ai();`) confirms the app can call it. See
+Mappings -> **Suggest** always offers exact and alias matches. To add AI similarity, turn on **Suggest
+mappings with Snowflake Cortex AI** in **Audit & Settings -> Settings** (setting `ai_suggestions_enabled`,
+off by default) and press **Test AI access** on the same tab (or `CALL <app>.core.check_ai();`). In most
+accounts the app can call `AI_EMBED` straight away. If it can't, the test shows the GRANTs that give it
+access (needs ACCOUNTADMIN): the application role for the one model it uses - needed where Cortex model
+access is restricted by role (`CORTEX_MODELS_ALLOWLIST` other than `'All'`), because code inside an app
+doesn't inherit the PUBLIC role's model access - and the embeddings-only database role. See
 [Mapping suggestions](#mapping-suggestions) for what it costs.
 
 ```sql
-GRANT DATABASE ROLE SNOWFLAKE.CORTEX_EMBED_USER TO APPLICATION <app>;
 CALL <app>.core.set_setting('ai_suggestions_enabled', 'true');
+CALL <app>.core.check_ai();   -- available: true, or the GRANTs below
+GRANT APPLICATION ROLE SNOWFLAKE."CORTEX-MODEL-ROLE-SNOWFLAKE-ARCTIC-EMBED-L-V2.0" TO APPLICATION <app>;
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_EMBED_USER TO APPLICATION <app>;
 ```
 
 ### 6. (Optional) Connect AI tools
 
-Nothing to install: the agent **Lodestar reference data** shows up in Snowflake CoWork, and the MCP server
-accepts MCP clients, for everyone whose role holds `viewer`. The account needs Cortex Agents and Snowflake
-CoWork enabled. The **Connect** page (every console) shows the MCP endpoint and the set-up for each kind of
-client. Review what the app created before you grant it:
+Nothing to install: the agent **Lodestar reference data** and the MCP server are created by the app, for
+everyone whose role holds `viewer`. The account needs Cortex Agents and Snowflake CoWork enabled. If your
+account has a Snowflake CoWork object (it is created the first time someone opens CoWork or its settings),
+CoWork shows only the agents added to it or to its profile - add Lodestar's agent once, see
+[Connecting](#ai-agents-and-mcp). The **Connect** page (every console) shows the MCP endpoint and the
+set-up for each kind of client. Review what the app created before you grant it:
 
 ```sql
 DESC AGENT <app>.core.lodestar_agent;
@@ -330,9 +337,9 @@ can pick another target, and submits them as ordinary mapping changes - approval
 history apply as usual. Each run is audited as `SUGGEST_MAPPINGS` (it doesn't count as editing for the plan).
 
 **AI similarity** uses Snowflake Cortex `AI_EMBED` with the model `snowflake-arctic-embed-l-v2.0`
-inside your account - no data leaves Snowflake, and there is no LLM prompt. The app needs
-`SNOWFLAKE.CORTEX_EMBED_USER` (step 5 of the configuration). If it can't call `AI_EMBED` (role not
-granted, model not available in your region and cross-region inference not allowed by
+inside your account - no data leaves Snowflake, and there is no LLM prompt. If the app can't call
+`AI_EMBED` (Cortex model access restricted by role without the grants in step 5, model not available in
+your region and cross-region inference not allowed by
 `CORTEX_ENABLED_CROSS_REGION`, or a Snowflake trial account - Snowflake doesn't offer `AI_EMBED` on
 trial accounts), suggestions fall back to exact and alias matches and say why.
 
@@ -483,7 +490,17 @@ The tools run on the app's warehouse `<APP_NAME>_WH`; that is why `viewer` has U
 
 **Connecting.**
 
-- **Snowflake CoWork**: nothing to do - the agent appears for users whose role holds `viewer`.
+- **Snowflake CoWork**: users whose role holds `viewer` can use the agent. Whether it appears by itself
+  depends on how CoWork is set up in your account (`SHOW SNOWFLAKE INTELLIGENCES;` and
+  `SHOW AGENTS IN SNOWFLAKE INTELLIGENCE <si_name>;` tell you):
+  - **No CoWork object**: nothing to do - it appears for those users.
+  - **A CoWork object without profiles**: an account administrator adds it once:
+    `ALTER SNOWFLAKE INTELLIGENCE <si_name> ADD AGENT <app>.CORE.LODESTAR_AGENT;`
+  - **CoWork profiles** (the object lists an agent such as `SNOWFLAKE_INTELLIGENCE.PROFILES.DEFAULT_PROFILE`):
+    a profile routes each question to the agents it names, so add `<app>.CORE.LODESTAR_AGENT` to the
+    profile's subagents - in **AI & ML -> CoWork Admin -> Agents -> (profile) -> Edit profile**, or with
+    `ALTER AGENT ... MODIFY LIVE VERSION SET SPECIFICATION` (keep the rest of its specification).
+    Listing it gives no one access by itself: users still need `viewer`.
 - **Cortex Code**: add the server to `~/.snowflake/cortex/mcp.json`; Cortex Code (1.1.65 or later) signs in
   with a connection from your `connections.toml`:
 
