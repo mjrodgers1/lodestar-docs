@@ -821,6 +821,6 @@ it owns (its warehouse). Export anything you need first, e.g.
 
 ## Support
 
-E-mail `support@<your-domain>` - we reply within 1 business day. Please include the app's version
+E-mail `mjrodgers1@gmail.com` - we reply within 1 business day. Please include the app's version
 (`SHOW APPLICATIONS LIKE '<app>';` - the `version`, `patch` and `label` columns) and, for an error, the
 message the console showed. Documentation: https://github.com/mjrodgers1/lodestar-docs
