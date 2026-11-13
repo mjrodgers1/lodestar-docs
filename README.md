@@ -5,7 +5,8 @@ business and data teams to maintain the data everything else depends on - custom
 and cost-centre codes, financial hierarchies, country and currency codes, cross-system mappings, and
 your own control tables such as price lists and thresholds. Business users work in a familiar grid;
 every change gets maker/checker approval, effective dating and a complete audit trail, and is live in
-your queries as soon as it is approved (or on its effective date). Your data never leaves your account.
+your queries as soon as it is approved (or on its effective date). Your data stays in your account; only
+error and warning logs reach us (see [Telemetry](#telemetry)).
 
 ## Features
 
@@ -762,12 +763,21 @@ Payload fields: CODE_VALUE `description`, `sort_order`, `attributes`; MAPPING `s
 ## Telemetry
 
 The app shares **error and warning logs** with the provider (mandatory) so we can detect and fix
-failures. **INFO usage logs** are optional and off by default. Logs contain procedure names,
-counts and error messages; validation errors can include the code or code-set identifier that
-failed (for example "Target code XX is not valid in COUNTRY"). Descriptions, attributes and
-bulk-import contents are not logged. Event sharing requires an active event table in your account.
+failures. Snowflake adds your organisation and account name, account locator, region and the app
+version to each event. A message names the procedure and the problem; a rejected change usually names
+what it was about - the code set, mapping set, hierarchy or managed table, the code or row key, the
+attribute or column, and sometimes the value that was refused or the allowed values (for example
+"currency: GBP is not a valid CURRENCY code"). An unexpected error includes Snowflake's error message,
+which can quote a value involved, and a stack trace of the app's code. The app never logs whole rows,
+pasted rows or uploaded files, comments, or your users' names (a message that names stewards in the
+console is logged with only their number). If your codes or row keys are themselves personal data (for
+example employee numbers), they can appear in these messages. **INFO usage logs** are optional and off
+by default: per call, the time taken and the number of statements, and per review the number of changes
+approved, rejected, failed and skipped. Event sharing
+requires an active event table in your account.
 The app doesn't request traces or agent telemetry, so questions asked of its Cortex Agent or MCP server
-and their answers stay in your account.
+and their answers stay in your account. Privacy notice:
+https://github.com/mjrodgers1/lodestar-docs/blob/main/PRIVACY.md
 
 ## Trial and plan
 
