@@ -794,7 +794,7 @@ approved, rejected, failed and skipped. Event sharing
 requires an active event table in your account.
 The app doesn't request traces or agent telemetry, so questions asked of its Cortex Agent or MCP server
 and their answers stay in your account. Privacy notice:
-https://github.com/mjrodgers1/lodestar-docs/blob/main/PRIVACY.md
+https://www.lodestardataservices.com/privacy/
 
 ## Trial and plan
 
@@ -848,6 +848,6 @@ it owns (its warehouse). Export anything you need first, e.g.
 
 ## Support
 
-E-mail `mjrodgers1@gmail.com` - we reply within 1 business day. Please include the app's version
+E-mail `support@lodestardataservices.com` - we reply within 1 business day. Please include the app's version
 (`SHOW APPLICATIONS LIKE '<app>';` - the `version`, `patch` and `label` columns) and, for an error, the
-message the console showed. Documentation: https://github.com/mjrodgers1/lodestar-docs
+message the console showed. Documentation: https://www.lodestardataservices.com/docs/

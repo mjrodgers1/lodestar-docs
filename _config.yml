@@ -1,0 +1,13 @@
+# GitHub Pages site for www.lodestardataservices.com (built by GitHub from the lodestar-docs repo).
+# Source: release/docs/site/ in the Lodestar repo; release/publish_docs.ps1 copies it there.
+title: Lodestar Data Services
+description: Governed reference data and table editing inside your own Snowflake account.
+email: support@lodestardataservices.com
+url: https://www.lodestardataservices.com
+theme: minima
+header_pages:
+  - docs/index.md
+  - privacy/index.md
+# README.md is the repository's front page on github.com; the site serves it as /docs/ instead.
+exclude:
+  - README.md
