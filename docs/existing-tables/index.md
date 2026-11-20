@@ -77,6 +77,11 @@ column proposes targets for the values that aren't mapped. From SQL:
 CALL <app>.core.check_values('MAPPING_SET', 'CRM_COUNTRY', 'MY_DB.MY_SCHEMA.CUSTOMER', 'NATION_CODE');
 ```
 
+To keep watching a column, an Admin schedules the check (step 11 of
+[Post-install configuration](/docs/getting-started/#post-install-configuration)): it runs daily or weekly, and only values that
+become problems are emailed. With more than 1,000 problem values, "new" is judged on the 1,000 with the
+most rows.
+
 ### Pattern 4 - Load reference data you subscribe to {#pattern-4---load-reference-data-you-subscribe-to}
 
 Reference data bought or shared through the Marketplace (country, currency, industry or product

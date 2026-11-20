@@ -48,6 +48,9 @@ error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#teleme
   aren't codes of a code set, or aren't mapped by a mapping set, today - and why: missing, valid only from
   a later date, no longer valid, waiting for approval, or blank - with the number of rows each affects.
   Changes nothing.
+- **Scheduled checks**: an Admin saves a Check a column to run daily or weekly. The app runs it on its own
+  warehouse, keeps every result, and emails the values that became problems since the run before (when
+  email notifications are on) to whoever scheduled it and the set's named stewards. See step 11 below.
 - **Maker/checker workflow**: Stewards propose changes, Admins approve or reject them. Self-approval
   is blocked by default (a requester can still reject - i.e. withdraw - their own request). Approval
   can be required or waived per code set, mapping set or hierarchy.

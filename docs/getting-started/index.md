@@ -17,6 +17,7 @@ next_title: "Using the app"
 |---|---|
 | `CREATE WAREHOUSE` | The app creates one X-Small warehouse named `<APP_NAME>_WH` (standard Gen1, query acceleration off, auto-suspend 60 s, initially suspended). The app's consoles and the procedures they call run on it, so this compute is isolated from your workloads and its cost is attributable to the app (see Cost). Roles with `viewer` get USAGE on it because the agent's and MCP server's tools run there with the caller's rights (see [AI agents and MCP](/docs/ai-and-mcp/#ai-agents-and-mcp)); those roles can also run their own queries on it. |
 | `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see step 2 below. Calls you make from SQL always record your own user, either way. |
+| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due (step 11). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
 
 Optional references (each can hold as many objects as you like):
 
@@ -221,4 +222,34 @@ Who gets what:
 
 Turning notifications off (same page, or `CALL <app>.core.set_email_notifications(NULL);`) also deletes
 every recorded email. Revoking USAGE on the integration stops the emails at once.
+
+### 11. (Optional) Schedule column checks {#11-optional-schedule-column-checks}
+
+Any **Check a column** (step-by-step in [Pattern 3](/docs/existing-tables/#pattern-3---check-data-quality)) can run on its own. After
+running a check, an Admin opens **Schedule this check** under the result and picks **Daily** or **Weekly** (and
+the day). From then on:
+
+- Once a day, at the time set in **Audit & Settings -> Settings -> Scheduled checks** (default 06:00 UTC; any
+  time zone), the app's task runs the checks that are due, on the app's warehouse.
+- Each run is kept (`core.check_runs`, 400 days) and compared with the one before. Values that became
+  problems since then are emailed - when email notifications are on (step 10) - to whoever scheduled the
+  check and the code set's or mapping set's named stewards, if their email is recorded. The email lists up
+  to 20 of the new values with their rows and reason. A check that starts failing (for example because its
+  table was removed from the app) emails the error once.
+- What the check finds when you schedule it is the starting point and isn't emailed.
+- The latest result of each scheduled check is shown above **Check a column** on the Code Values and Mappings
+  pages, and **My work** lists the checks that found new problems in the last 7 days. Admins can **Run now**
+  (the same as a scheduled run, but you aren't emailed yourself) or **Remove** a check there.
+
+Up to 50 checks can be scheduled; scheduling the same table and column for the same set again only changes
+when it runs. The task needs the `EXECUTE TASK` privilege, which Snowflake grants automatically. If the
+Settings page says the app doesn't hold it (for example after a feature policy in your account limited
+apps' tasks), an account administrator can run `GRANT EXECUTE TASK ON ACCOUNT TO APPLICATION <app>;`.
+From SQL:
+
+```sql
+CALL <app>.core.schedule_check('CODE_SET', 'COUNTRY', 'MY_DB.SALES.ORDERS', 'SHIP_COUNTRY', 'WEEKLY', 'MON');
+CALL <app>.core.set_check_time('07:30', 'Europe/Dublin');
+SELECT * FROM <app>.core.check_schedules;
+```
 {% endraw %}

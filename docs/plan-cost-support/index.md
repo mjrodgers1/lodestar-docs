@@ -58,6 +58,7 @@ Apart from any listing price, the app only uses Snowflake compute and storage in
 | AI mapping suggestions (only if an Admin turns them on) | Cortex `AI_EMBED` on the app's warehouse | Cortex AI usage: about 10 tokens per code, each target code embedded once - see [Mapping suggestions](/docs/mappings/#mapping-suggestions) |
 | Questions to the agent or the MCP server's Cortex Analyst tool | Cortex Agents / Cortex Analyst, with their queries on the app's warehouse | Cortex AI usage per question, plus that warehouse - see [AI agents and MCP](/docs/ai-and-mcp/#ai-agents-and-mcp) |
 | Email notifications (only if an Admin turns them on) | Sent within the submission or review that triggers them, on the same warehouse | That warehouse's time for the extra statements |
+| Scheduled checks (only once an Admin schedules one) | The app's task, once a day, on the app's warehouse | That warehouse: it resumes for the run (billed for at least 60 s, about 0.017 credits on X-Small), plus a few seconds per check - about 0.5 credits a month for a handful of checks. Suspended while nothing is scheduled |
 
 Each action in a console takes a few seconds of warehouse time; a code set of 50,000 codes is
 imported in about 30 s. To see what the app itself costs:

@@ -28,6 +28,9 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
   aren't codes of a code set, or aren't mapped by a mapping set, today - and why: missing, valid only from
   a later date, no longer valid, waiting for approval, or blank - with the number of rows each affects.
   Changes nothing.
+- **Scheduled checks**: an Admin saves a Check a column to run daily or weekly. The app runs it on its own
+  warehouse, keeps every result, and emails the values that became problems since the run before (when
+  email notifications are on) to whoever scheduled it and the set's named stewards. See step 11 below.
 - **Maker/checker workflow**: Stewards propose changes, Admins approve or reject them. Self-approval
   is blocked by default (a requester can still reject - i.e. withdraw - their own request). Approval
   can be required or waived per code set, mapping set or hierarchy.
@@ -70,6 +73,7 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
 |---|---|
 | `CREATE WAREHOUSE` | The app creates one X-Small warehouse named `<APP_NAME>_WH` (standard Gen1, query acceleration off, auto-suspend 60 s, initially suspended). The app's consoles and the procedures they call run on it, so this compute is isolated from your workloads and its cost is attributable to the app (see Cost). Roles with `viewer` get USAGE on it because the agent's and MCP server's tools run there with the caller's rights (see [AI agents and MCP](#ai-agents-and-mcp)); those roles can also run their own queries on it. |
 | `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see step 2 below. Calls you make from SQL always record your own user, either way. |
+| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due (step 11). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
 
 Optional references (each can hold as many objects as you like):
 
@@ -275,6 +279,36 @@ Who gets what:
 Turning notifications off (same page, or `CALL <app>.core.set_email_notifications(NULL);`) also deletes
 every recorded email. Revoking USAGE on the integration stops the emails at once.
 
+### 11. (Optional) Schedule column checks
+
+Any **Check a column** (step-by-step in [Pattern 3](#pattern-3---check-data-quality)) can run on its own. After
+running a check, an Admin opens **Schedule this check** under the result and picks **Daily** or **Weekly** (and
+the day). From then on:
+
+- Once a day, at the time set in **Audit & Settings -> Settings -> Scheduled checks** (default 06:00 UTC; any
+  time zone), the app's task runs the checks that are due, on the app's warehouse.
+- Each run is kept (`core.check_runs`, 400 days) and compared with the one before. Values that became
+  problems since then are emailed - when email notifications are on (step 10) - to whoever scheduled the
+  check and the code set's or mapping set's named stewards, if their email is recorded. The email lists up
+  to 20 of the new values with their rows and reason. A check that starts failing (for example because its
+  table was removed from the app) emails the error once.
+- What the check finds when you schedule it is the starting point and isn't emailed.
+- The latest result of each scheduled check is shown above **Check a column** on the Code Values and Mappings
+  pages, and **My work** lists the checks that found new problems in the last 7 days. Admins can **Run now**
+  (the same as a scheduled run, but you aren't emailed yourself) or **Remove** a check there.
+
+Up to 50 checks can be scheduled; scheduling the same table and column for the same set again only changes
+when it runs. The task needs the `EXECUTE TASK` privilege, which Snowflake grants automatically. If the
+Settings page says the app doesn't hold it (for example after a feature policy in your account limited
+apps' tasks), an account administrator can run `GRANT EXECUTE TASK ON ACCOUNT TO APPLICATION <app>;`.
+From SQL:
+
+```sql
+CALL <app>.core.schedule_check('CODE_SET', 'COUNTRY', 'MY_DB.SALES.ORDERS', 'SHIP_COUNTRY', 'WEEKLY', 'MON');
+CALL <app>.core.set_check_time('07:30', 'Europe/Dublin');
+SELECT * FROM <app>.core.check_schedules;
+```
+
 ## Using the app
 
 The sidebar groups pages into **My work** (My work, Home), **Reference data** (Code Sets, Code Values,
@@ -283,16 +317,16 @@ Mappings, Hierarchies, Bulk Import), **Managed tables**, **Governance** (Approva
 
 | Page | Console | What |
 |---|---|---|
-| My work | Steward / Admin | One row per submission: **Awaiting my review** (Admins: pending changes they may approve - not their own unless self-approval is on), **My open submissions**, and **Decided in the last 14 days** (rejected, failed or approved by a reviewer, with the review comment and any error; changes applied automatically are listed only if they failed). Pick a submission to read or add comments. The sidebar count is submissions awaiting your review plus those returned to you (rejected or failed); it refreshes after each action or with **Refresh**. |
+| My work | Steward / Admin | One row per submission: **Awaiting my review** (Admins: pending changes they may approve - not their own unless self-approval is on), **My open submissions**, and **Decided in the last 14 days** (rejected, failed or approved by a reviewer, with the review comment and any error; changes applied automatically are listed only if they failed). Pick a submission to read or add comments. The sidebar count is submissions awaiting your review plus those returned to you (rejected or failed); it refreshes after each action or with **Refresh**. Above them, scheduled checks that found new problems in the last 7 days. |
 | Home | all | Counts, and for Admins the set-up checklist and plan usage. |
 | Code Sets | all / Admin | Browse code sets. Admins create, retire and reactivate them, set the approval policy and stewards, and define attributes. |
-| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. **Check a column** (Steward): pick a column of an import source and see which of its values aren't codes of the code set today (see [Pattern 3](#pattern-3---check-data-quality)). |
-| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. **Check a column** (Steward): which values of a column the mapping set doesn't map today. |
+| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. **Check a column** (Steward): pick a column of an import source and see which of its values aren't codes of the code set today (see [Pattern 3](#pattern-3---check-data-quality)); Admins can schedule it (step 11), and the scheduled checks of the code set are listed there with their latest result. |
+| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. **Check a column** (Steward): which values of a column the mapping set doesn't map today; Admins can schedule it (step 11). |
 | Hierarchies | all / Steward | View the tree. Stewards set each code's parent (empty = root). |
 | Approvals | Steward / Admin | Stewards track pending requests; Admins approve or reject them, per request or a whole batch (one grid save, import or revert) at a time. A change that fails validation is marked `FAILED` with the reason; the others are applied. Under **Recent decisions**, select applied changes and **Revert** them. Every grid has a **comments** count; pick a request or submission under it to read its thread (comments plus review decisions) and add a comment. |
 | Bulk Import | Steward | **Paste or upload rows**: paste cells copied from Excel or CSV text, or upload a CSV / TSV / TXT or Excel (.xlsx; pick the sheet) file of up to 25 MB - the first row is the header and must include `CODE`; check the preview (empty rows are skipped) and import. Up to 50,000 rows per run. Or import **from a table or view**: pick one of the sources an Admin added (your own or shared databases), check the preview, map its columns to the code, description, sort order, valid-from date, parent code (with a hierarchy) and typed attributes, and run it. The mapping is remembered per source and code set. Admins add and remove sources here. |
 | Managed tables | Steward / Admin | **Edit rows**: pick a table, search, and edit its rows in a grid (editable columns are typed; key columns marked; other columns shown for reference). Add or delete rows where the table allows it, give a reason and ticket, and submit. Key values of existing rows can't be edited (delete the row and add a new one). **Pending changes**: each change as before -> after, with comments. **History**: every applied change per column, for the whole table or one row, with comments. **Set up** (Admin): add or remove tables, register key / editable / audit columns and what Stewards may do, approval policy, stewards, retire. See [Managed tables](#managed-tables). |
-| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), turn email notifications on or off and see who is recorded for them (step 10), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
+| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), turn email notifications on or off and see who is recorded for them (step 10), set when scheduled checks run and **Check the schedule** (step 11), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
 | Connect | all | Whether the Cortex Agent and MCP server are available, the MCP endpoint, the MCP tools, how to connect Snowflake CoWork, Cortex Code, other MCP clients and your own agents, and example questions. See [AI agents and MCP](#ai-agents-and-mcp). |
 
 Creating or retiring sets and saving settings takes a second or two; saving changes, approving or
@@ -652,6 +686,11 @@ column proposes targets for the values that aren't mapped. From SQL:
 CALL <app>.core.check_values('MAPPING_SET', 'CRM_COUNTRY', 'MY_DB.MY_SCHEMA.CUSTOMER', 'NATION_CODE');
 ```
 
+To keep watching a column, an Admin schedules the check (step 11 of
+[Post-install configuration](#post-install-configuration)): it runs daily or weekly, and only values that
+become problems are emailed. With more than 1,000 problem values, "new" is judged on the 1,000 with the
+most rows.
+
 ### Pattern 4 - Load reference data you subscribe to
 
 Reference data bought or shared through the Marketplace (country, currency, industry or product
@@ -763,6 +802,8 @@ SELECT * FROM <app>.core.hierarchy_current WHERE hierarchy = 'COUNTRY_REGION' OR
 | `core.audit_log` | admin | Full audit trail |
 | `core.active_editors` | admin | Editors in the last 30 days (user, actions, first / last action) - what your plan counts, see [Trial and plan](#trial-and-plan) |
 | `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see step 10 of [Post-install configuration](#post-install-configuration) |
+| `core.check_schedules` | steward | Scheduled checks (step 11): `check_id`, the set (`target_type`, `target_name`), `source` and `column_name`, `frequency` (`DAILY`, `WEEKLY`) and `weekday`, who scheduled it, and its latest run: `last_run_at`, `last_status` (`OK`, `PROBLEMS`, `ERROR`), `last_run_type`, values and rows checked, % OK, `problem_values`, `new_problem_count`, `notified` (people emailed) and `error` |
+| `core.check_runs` | steward | Every run of a scheduled check (400 days): `run_type` (`BASELINE` when scheduled, `MANUAL` = Run now, `SCHEDULE`), `run_by`, `status`, counts and % OK, `new_problem_count` and `new_problems` (up to 100 `{value, rows, status}`), `notified`, `error` |
 
 ### Stored procedures
 
@@ -803,6 +844,12 @@ date or an unknown code) is marked `FAILED` with the reason, and the others are 
 | `core.set_settings(settings)` | admin | Several settings at once, all or nothing: `PARSE_JSON('{"require_approval": "true", "require_change_reason": "true"}')`. Every key is checked first; only changed values are saved and audited. Returns `settings` and `changed`. |
 | `core.set_email_notifications(integration, test_recipient)` | admin | Turn email notifications on through an email notification integration the app may use (`test_recipient` optional: a test email is sent first, and nothing is saved unless Snowflake accepts it - a refusal returns Snowflake's `error` and the set-up SQL as `fix`), or off with `integration` NULL (also deletes every recorded email). Audited as `SET_EMAIL_NOTIFICATIONS` |
 | `core.note_contact(email)`, `core.note_admin_contact(email)` | steward, admin | Used by the Steward and Admin consoles: record the caller's verified email for notifications, only while they are on (the admin one also makes the caller someone to ask for approval). Not audited |
+| `core.schedule_check(target_type, target_name, source, column_name, frequency, weekday)` | admin | Schedule a `check_values` check: `frequency` `DAILY` or `WEEKLY` (`weekday` `MON` ... `SUN`). It runs once straight away (the baseline, not emailed). The same set, source and column again changes its schedule. Returns `check_id`, `baseline` and the task's state (`task`). Audited as `SCHEDULE_CHECK`. At most 50 |
+| `core.run_check_now(check_id)` | admin | Run a scheduled check now, as the schedule would - recorded, and new problems emailed - except that you aren't emailed. Not audited (it changes nothing) |
+| `core.unschedule_check(check_id)` | admin | Stop a scheduled check and delete its runs. Audited as `UNSCHEDULE_CHECK` |
+| `core.run_due_checks()` | admin | What the app's task calls every day: run every scheduled check that is due (daily ones not run in the last 20 hours; weekly ones on their day, or once a week was missed). Returns `ran`, `failed` and each run |
+| `core.set_check_time(run_time, time_zone)` | admin | When the task runs: `'HH:MM'` (24-hour clock) and a time zone such as `UTC` or `Europe/Dublin`. Audited as `SET_CHECK_TIME` |
+| `core.check_task_status()` | admin | The scheduled checks task: `state` (`started` / `suspended`), `schedule`, `definition`, `warehouse`, `schedules`, `run_time` / `time_zone`, and its latest `runs` from Snowflake's task history (the next one has state `SCHEDULED`), or `error` |
 | `core.plan_usage()` | admin | Editors active in the last 30 days against the editors your plan includes: `active_editors`, `included_editors`, `over` |
 | `core.check_ai()` | admin | Whether the app can call Cortex `AI_EMBED` (one embedding of a few tokens): `available`, `enabled` (the `ai_suggestions_enabled` setting), `model`, `region`; when not available, Snowflake's `error` and the GRANT that usually fixes it (`fix`) - or, on a Snowflake trial account, `trial` = true and no `fix` (Snowflake doesn't offer AI functions on trials) |
 | `core.set_approval_policy(container_type, name, policy)` | admin | `policy`: `DEFAULT`, `REQUIRED` or `NOT_REQUIRED` |
@@ -897,6 +944,7 @@ Apart from any listing price, the app only uses Snowflake compute and storage in
 | AI mapping suggestions (only if an Admin turns them on) | Cortex `AI_EMBED` on the app's warehouse | Cortex AI usage: about 10 tokens per code, each target code embedded once - see [Mapping suggestions](#mapping-suggestions) |
 | Questions to the agent or the MCP server's Cortex Analyst tool | Cortex Agents / Cortex Analyst, with their queries on the app's warehouse | Cortex AI usage per question, plus that warehouse - see [AI agents and MCP](#ai-agents-and-mcp) |
 | Email notifications (only if an Admin turns them on) | Sent within the submission or review that triggers them, on the same warehouse | That warehouse's time for the extra statements |
+| Scheduled checks (only once an Admin schedules one) | The app's task, once a day, on the app's warehouse | That warehouse: it resumes for the run (billed for at least 60 s, about 0.017 credits on X-Small), plus a few seconds per check - about 0.5 credits a month for a handful of checks. Suspended while nothing is scheduled |
 
 Each action in a console takes a few seconds of warehouse time; a code set of 50,000 codes is
 imported in about 30 s. To see what the app itself costs:
