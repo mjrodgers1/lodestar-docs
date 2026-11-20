@@ -1,0 +1,162 @@
+---
+layout: default
+title: Home
+description: Governed reference data and table editing inside your own Snowflake account. Business users edit in a familiar grid; every change is approved, effective-dated and audited.
+---
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">A Snowflake Native App</p>
+      <h1>Governed reference data, inside your own Snowflake account</h1>
+      <p class="lead">One simple, safe place for business and data teams to maintain the data everything
+        else depends on: customer segments, product and cost-centre codes, financial hierarchies, country
+        and currency codes, cross-system mappings and your own control tables.</p>
+      <p class="hero-actions">
+        <a class="button primary" href="mailto:{{ site.email }}?subject=Lodestar%20trial">Ask for a trial</a>
+        <a class="button ghost" href="{{ '/docs/' | relative_url }}">Read the documentation</a>
+      </p>
+      <p class="hero-note">Coming to the Snowflake Marketplace. Full functionality free for 30 days.</p>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar"><span></span><span></span><span></span><b>Code Values: COST_CENTRE</b></div>
+      <table>
+        <thead><tr><th>Code</th><th>Description</th><th>Valid from</th></tr></thead>
+        <tbody>
+          <tr><td>CC100</td><td>Finance</td><td>2026-01-01</td></tr>
+          <tr><td>CC200</td><td>Operations</td><td>2026-01-01</td></tr>
+          <tr class="changed"><td>CC250</td><td>Customer Service</td><td>2026-12-01</td></tr>
+          <tr><td>CC300</td><td>Sales</td><td>2026-01-01</td></tr>
+        </tbody>
+      </table>
+      <div class="mock-review">
+        <div><b>1 change waiting for approval</b><br><small>Proposed by a steward, reason: new team from December, ticket FIN-482</small></div>
+        <span class="pill">Approve</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2>Built for the data everything else depends on</h2>
+    <p class="section-lead">Spreadsheets passed around by e-mail and ad-hoc SQL updates are how reference data
+      usually changes. Lodestar gives those changes an owner, an approval and a history, without leaving Snowflake.</p>
+    <div class="cards">
+      <div class="card">
+        <h3>Easy for business users</h3>
+        <p>Edit many rows at once in a familiar grid, paste rows copied from Excel, upload a CSV or Excel file,
+          filter and export. No SQL needed.</p>
+      </div>
+      <div class="card">
+        <h3>Maker/checker approval</h3>
+        <p>Stewards propose, admins approve. Self-approval is blocked by default; reasons, ticket references,
+          comments and a <em>My work</em> queue keep everyone informed.</p>
+      </div>
+      <div class="card">
+        <h3>Effective dating and audit</h3>
+        <p>Every change has an effective date and a full version history. Query any point in time, revert in
+          one click, and see who changed what and why.</p>
+      </div>
+      <div class="card">
+        <h3>Code sets, mappings, hierarchies</h3>
+        <p>Typed attributes validated on submit and on approval, crosswalks between systems with mapping
+          suggestions (AI similarity with Snowflake Cortex if you turn it on), and parent/child trees.</p>
+      </div>
+      <div class="card">
+        <h3>Your own tables, governed where they live</h3>
+        <p>Put existing control tables such as price lists and thresholds under governed editing. Approved
+          inserts, updates and deletes are written to your table, with field-level history.</p>
+      </div>
+      <div class="card">
+        <h3>Use it everywhere</h3>
+        <p>Always-current views for SQL, pipelines and BI, a semantic view for Cortex Analyst, a Cortex Agent in
+          Snowflake CoWork and an MCP server for AI tools. Read-only, with each user's own access.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Install from the Marketplace</b><span>The app runs in your account. No servers, no connectors, no
+        container compute; your data stays in your account.</span></li>
+      <li><b>Grant roles and choose what to manage</b><span>Grant the app's admin, steward and viewer roles to
+        your own Snowflake roles. Start with the sample code sets, load your own, or register existing tables.</span></li>
+      <li><b>Propose, approve, publish</b><span>Approved changes are live in your queries straight away, or on
+        their effective date. Pipelines and BI read them through ordinary views.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="band" id="plans">
+  <div class="wrap plans">
+    <div>
+      <h2>One plan, no surprises</h2>
+      <p class="section-lead">Try every feature free for 30 days. When you buy, the same install carries on with
+        all your data.</p>
+      <ul class="ticks">
+        <li>Up to 10 editors: people who change data or approve</li>
+        <li>Unlimited viewers, SQL users and managed tables</li>
+        <li>No implementation fee</li>
+        <li>Low running cost: one X-Small warehouse that suspends after 60 seconds, and no compute pool</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <p class="price-label">Standard</p>
+      <p class="price"><span>USD</span> 990<small> / month</small></p>
+      <p class="price-alt">or USD 9,900 / year</p>
+      <a class="button primary" href="mailto:{{ site.email }}?subject=Lodestar%20trial">Ask for a trial</a>
+      <p class="price-note">Larger teams: ask us for a private offer.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap faq">
+    <h2>Questions</h2>
+    <details>
+      <summary>Does our data leave our Snowflake account?</summary>
+      <p>No. Lodestar is a Snowflake Native App: your codes, tables and history stay in your account. Only error
+        and warning logs reach us, so that we can detect and fix failures. The
+        <a href="{{ '/docs/plan-cost-support/#telemetry' | relative_url }}">telemetry section</a> lists exactly what they contain.</p>
+    </details>
+    <details>
+      <summary>What does it cost to run?</summary>
+      <p>Apart from the plan, the app uses Snowflake compute and storage in your account: one X-Small
+        warehouse while someone is using the app, and a few MB of storage. Queries from your pipelines and BI run on
+        your own warehouses. See <a href="{{ '/docs/plan-cost-support/#cost' | relative_url }}">Cost</a>.</p>
+    </details>
+    <details>
+      <summary>Who counts as an editor?</summary>
+      <p>Anyone who proposed, approved, rejected, reverted or imported a change, or changed the app's set-up,
+        in the last 30 days. People who only read the views or browse the app don't count. Going over doesn't
+        block anyone; we'll talk to you about a larger plan.</p>
+    </details>
+    <details>
+      <summary>Can we use the tables we already have?</summary>
+      <p>Yes. Import from your own tables and views (or ones shared with you, such as Marketplace reference data),
+        or register existing tables as managed tables and edit them where they are. See
+        <a href="{{ '/docs/existing-tables/' | relative_url }}">Working with your existing tables</a>.</p>
+    </details>
+    <details>
+      <summary>Does it work with AI assistants?</summary>
+      <p>Yes. The app includes a Cortex Agent for Snowflake CoWork and an MCP server for Cortex Code, Claude,
+        Cursor and other MCP clients. They are read-only and run with each user's own access. See
+        <a href="{{ '/docs/ai-and-mcp/' | relative_url }}">AI agents and MCP</a>.</p>
+    </details>
+    <details>
+      <summary>What happens at the end of the trial?</summary>
+      <p>Snowflake e-mails you before the trial ends. If you buy the plan, the same install continues with all your
+        data; if not, the app is suspended and your data is kept as long as you don't uninstall it.</p>
+    </details>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>See it with your own data</h2>
+    <p>E-mail <a href="mailto:{{ site.email }}">{{ site.email }}</a> for a trial. We reply within 1 business day.</p>
+  </div>
+</section>

@@ -1,0 +1,17 @@
+---
+layout: default
+---
+<div class="wrap docs">
+  <nav class="docs-nav" aria-label="Documentation">
+    <p class="docs-nav-title">Documentation</p>
+    {% for item in site.data.docs %}<a href="{{ item.url | relative_url }}"{% if item.url == page.url %} class="current" aria-current="page"{% endif %}>{{ item.title }}</a>
+    {% endfor %}
+  </nav>
+  <article class="prose">
+{{ content }}
+    <nav class="docs-pager" aria-label="Previous and next">
+      {% if page.prev_url %}<a class="prev" href="{{ page.prev_url | relative_url }}"><span>Previous</span>{{ page.prev_title }}</a>{% endif %}
+      {% if page.next_url %}<a class="next" href="{{ page.next_url | relative_url }}"><span>Next</span>{{ page.next_title }}</a>{% endif %}
+    </nav>
+  </article>
+</div>

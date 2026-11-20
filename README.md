@@ -24,6 +24,10 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
   on - AI similarity with Snowflake Cortex (`Deutschland` -> `DE`). Stewards accept or correct them;
   accepted ones go through the normal approval rules.
 - **Hierarchies**: parent/child trees over a code set, with cycle detection.
+- **Check a column**: point Lodestar at a column of one of your tables or views and see which of its values
+  aren't codes of a code set, or aren't mapped by a mapping set, today - and why: missing, valid only from
+  a later date, no longer valid, waiting for approval, or blank - with the number of rows each affects.
+  Changes nothing.
 - **Maker/checker workflow**: Stewards propose changes, Admins approve or reject them. Self-approval
   is blocked by default (a requester can still reject - i.e. withdraw - their own request). Approval
   can be required or waived per code set, mapping set or hierarchy.
@@ -35,6 +39,9 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
 - **My work**: Stewards and Admins land on their own work queue - submissions waiting for their review,
   their own open submissions, and decisions on their changes in the last 14 days (with the reviewer's
   comment, e.g. why a change was rejected). The sidebar shows how many need them.
+- **Email notifications** (optional): Admins are emailed when changes wait for their approval, and
+  requesters when their changes are approved or rejected - sent by Snowflake, only to verified emails of
+  users in your account. See step 10 below.
 - **Comments**: discuss any change request or whole submission. Comments are kept with the request,
   audited, and never edited or deleted (add another to correct one).
 - **Bulk import**: paste rows copied from Excel, upload a CSV or Excel (.xlsx) file, or load from any
@@ -236,6 +243,38 @@ ALTER APPLICATION <app> SET MAINTENANCE POLICY <db>.<schema>.lds_upgrades;
 
 Your data is kept across upgrades.
 
+### 10. (Optional) Email approvers and requesters
+
+The app can email Admins when changes wait for their approval, and the person who submitted changes when
+they are approved, rejected or fail. Snowflake sends the emails, only to verified email addresses of users
+in your account (each user verifies theirs in Snowsight, under their profile). Once, as ACCOUNTADMIN (or a
+role with CREATE INTEGRATION), create an email notification integration and let the app use it:
+
+```sql
+CREATE NOTIFICATION INTEGRATION IF NOT EXISTS lodestar_email TYPE = EMAIL ENABLED = TRUE;
+GRANT USAGE ON INTEGRATION lodestar_email TO APPLICATION <app>;
+```
+
+Then an Admin turns them on in **Audit & Settings -> Settings -> Email notifications**, which first sends
+them a test email (or from SQL: `CALL <app>.core.set_email_notifications('LODESTAR_EMAIL', 'you@example.com');`).
+An existing integration works too, as long as the app is granted USAGE on it.
+
+Who gets what:
+
+- While notifications are on, the Steward and Admin consoles record each person's Snowflake user name and
+  verified email (as Snowflake gives it to the console) when they open them - see `core.email_contacts`.
+  People who only use SQL aren't recorded until they open a console.
+- A submission that needs approval (changes, imports, reverts, managed-table edits) emails the Admins who
+  opened the Admin console in the last 90 days, except the person who submitted it: who, how many changes
+  to which code set, mapping set, hierarchy or managed table, and the reason and ticket. Codes and values
+  are not included.
+- A review emails each requester the outcome (approved, rejected, failed) and the reviewer's comment, unless
+  they reviewed their own changes. Auto-applied changes send nothing.
+- An email that can't be sent never stops a change: the console shows a warning instead.
+
+Turning notifications off (same page, or `CALL <app>.core.set_email_notifications(NULL);`) also deletes
+every recorded email. Revoking USAGE on the integration stops the emails at once.
+
 ## Using the app
 
 The sidebar groups pages into **My work** (My work, Home), **Reference data** (Code Sets, Code Values,
@@ -247,13 +286,13 @@ Mappings, Hierarchies, Bulk Import), **Managed tables**, **Governance** (Approva
 | My work | Steward / Admin | One row per submission: **Awaiting my review** (Admins: pending changes they may approve - not their own unless self-approval is on), **My open submissions**, and **Decided in the last 14 days** (rejected, failed or approved by a reviewer, with the review comment and any error; changes applied automatically are listed only if they failed). Pick a submission to read or add comments. The sidebar count is submissions awaiting your review plus those returned to you (rejected or failed); it refreshes after each action or with **Refresh**. |
 | Home | all | Counts, and for Admins the set-up checklist and plan usage. |
 | Code Sets | all / Admin | Browse code sets. Admins create, retire and reactivate them, set the approval policy and stewards, and define attributes. |
-| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. |
-| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. |
+| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. **Check a column** (Steward): pick a column of an import source and see which of its values aren't codes of the code set today (see [Pattern 3](#pattern-3---check-data-quality)). |
+| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. **Check a column** (Steward): which values of a column the mapping set doesn't map today. |
 | Hierarchies | all / Steward | View the tree. Stewards set each code's parent (empty = root). |
 | Approvals | Steward / Admin | Stewards track pending requests; Admins approve or reject them, per request or a whole batch (one grid save, import or revert) at a time. A change that fails validation is marked `FAILED` with the reason; the others are applied. Under **Recent decisions**, select applied changes and **Revert** them. Every grid has a **comments** count; pick a request or submission under it to read its thread (comments plus review decisions) and add a comment. |
 | Bulk Import | Steward | **Paste or upload rows**: paste cells copied from Excel or CSV text, or upload a CSV / TSV / TXT or Excel (.xlsx; pick the sheet) file of up to 25 MB - the first row is the header and must include `CODE`; check the preview (empty rows are skipped) and import. Up to 50,000 rows per run. Or import **from a table or view**: pick one of the sources an Admin added (your own or shared databases), check the preview, map its columns to the code, description, sort order, valid-from date, parent code (with a hierarchy) and typed attributes, and run it. The mapping is remembered per source and code set. Admins add and remove sources here. |
 | Managed tables | Steward / Admin | **Edit rows**: pick a table, search, and edit its rows in a grid (editable columns are typed; key columns marked; other columns shown for reference). Add or delete rows where the table allows it, give a reason and ticket, and submit. Key values of existing rows can't be edited (delete the row and add a new one). **Pending changes**: each change as before -> after, with comments. **History**: every applied change per column, for the whole table or one row, with comments. **Set up** (Admin): add or remove tables, register key / editable / audit columns and what Stewards may do, approval policy, stewards, retire. See [Managed tables](#managed-tables). |
-| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
+| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), turn email notifications on or off and see who is recorded for them (step 10), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
 | Connect | all | Whether the Cortex Agent and MCP server are available, the MCP endpoint, the MCP tools, how to connect Snowflake CoWork, Cortex Code, other MCP clients and your own agents, and example questions. See [AI agents and MCP](#ai-agents-and-mcp). |
 
 Creating or retiring sets and saving settings takes a second or two; saving changes, approving or
@@ -490,8 +529,9 @@ The tools run on the app's warehouse `<APP_NAME>_WH`; that is why `viewer` has U
 
 **Connecting.**
 
-- **Snowflake CoWork**: users whose role holds `viewer` can use the agent. Whether it appears by itself
-  depends on how CoWork is set up in your account (`SHOW SNOWFLAKE INTELLIGENCES;` and
+- **Snowflake CoWork**: users whose role holds `viewer` can use the agent at https://ai.snowflake.com (the
+  **CoCo** tab in Snowsight is Cortex Code, a different assistant that doesn't use the agent). Whether it
+  appears by itself depends on how CoWork is set up in your account (`SHOW SNOWFLAKE INTELLIGENCES;` and
   `SHOW AGENTS IN SNOWFLAKE INTELLIGENCE <si_name>;` tell you):
   - **No CoWork object**: nothing to do - it appears for those users.
   - **A CoWork object without profiles**: an account administrator adds it once:
@@ -509,6 +549,11 @@ The tools run on the app's warehouse `<APP_NAME>_WH`; that is why `viewer` has U
     "url": "https://<account_url>/api/v2/databases/<app>/schemas/CORE/mcp-servers/LODESTAR_MCP",
     "snowflake_connection": "<your_connection_name>"}}}
   ```
+
+  In **Cortex Code Desktop** that connection must be the **active** connection: otherwise the server is
+  refused (401) and its tools don't appear. Start a new session after switching. In the **Cortex Code CLI**,
+  check under `/mcp` that `lodestar` is switched on and connected (select it and press T to turn it on).
+  The connection's role needs `viewer`.
 
 - **Claude, Cursor, ChatGPT and other MCP clients**: sign in with Snowflake OAuth. An account administrator
   creates one security integration for the account, and each user enters the client id and secret in the
@@ -584,6 +629,28 @@ WHERE country_code IS NULL;
 
 Once a Steward adds the missing mapping or code in the app, the rows disappear from the check.
 No reload is needed.
+
+**Before you build the joins**, or to see the gaps without writing SQL, add the table as an import source
+(Bulk Import) and use **Check a column** on the Code Values or Mappings page: pick the table and the column,
+and the app lists each value that isn't a code of the code set (or isn't mapped by the mapping set) today,
+most rows first, with the reason:
+
+| Status | Meaning |
+|---|---|
+| Not a code / Not mapped | The app has never had this value |
+| Valid only from a later date | It has a version, but that starts after today |
+| No longer valid | It had a version, but that has ended (e.g. a retired code) |
+| Change waiting for approval | A change for it has been submitted and not yet approved |
+| Blank | Empty or NULL |
+
+Values are compared as text after trimming spaces, exactly as the joins compare them (`ie` is not `IE`).
+The check reads the column once on the app's warehouse and changes nothing; the first 1,000 values that
+aren't OK are listed, and the counts cover all of them. On a mapping set, **Suggest** with the same table and
+column proposes targets for the values that aren't mapped. From SQL:
+
+```sql
+CALL <app>.core.check_values('MAPPING_SET', 'CRM_COUNTRY', 'MY_DB.MY_SCHEMA.CUSTOMER', 'NATION_CODE');
+```
 
 ### Pattern 4 - Load reference data you subscribe to
 
@@ -695,6 +762,7 @@ SELECT * FROM <app>.core.hierarchy_current WHERE hierarchy = 'COUNTRY_REGION' OR
 | `core.managed_field_history` | steward | Applied changes to managed tables, one row per column: `row_key` (the key, or a JSON array for a composite key), `key_values`, `action` (`INSERT`, `UPDATE`, `DELETE`), `column_name`, `old_value` / `new_value` (text, or JSON for JSON columns), who proposed and approved it, when, the reason and ticket |
 | `core.audit_log` | admin | Full audit trail |
 | `core.active_editors` | admin | Editors in the last 30 days (user, actions, first / last action) - what your plan counts, see [Trial and plan](#trial-and-plan) |
+| `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see step 10 of [Post-install configuration](#post-install-configuration) |
 
 ### Stored procedures
 
@@ -725,6 +793,7 @@ date or an unknown code) is marked `FAILED` with the reason, and the others are 
 | `core.submit_row_changes(table_name, changes, reason, ticket_ref)` | steward | Submit inserts, updates and deletes for a managed table: `changes` is an array of `{"action": "INSERT" / "UPDATE" / "DELETE", "key": {column: value}, "values": {column: value}, "row_hash": ...}` (`row_hash` optional). Applied at once if the table's approval policy doesn't require approval. See [Managed tables](#managed-tables) |
 | `core.suggest_mappings(mapping_set, sources)` | steward | Suggested target codes for source codes the mapping set doesn't map yet: `sources` is an array of codes or `{"code": ..., "description": ...}` objects (up to 1,000). Changes nothing. See [Mapping suggestions](#mapping-suggestions) |
 | `core.suggest_mappings_from_source(mapping_set, source, code_column, description_column)` | steward | The same for the distinct values of a column of an import source (`source` = DATABASE.SCHEMA.NAME as listed by `core.import_sources`; `description_column` optional) |
+| `core.check_values(target_type, target_name, source, column_name)` | steward | Which values of a column of an import source aren't codes of a code set (`target_type` `CODE_SET`) or aren't mapped by a mapping set (`MAPPING_SET`) today: per status (`OK`, `FUTURE`, `PENDING`, `ENDED`, `MISSING`, `BLANK`) the number of values and rows, the coverage in %, and the values that aren't OK, most rows first (up to 1,000). Changes nothing. See [Pattern 3](#pattern-3---check-data-quality) |
 | `core.review_requests(request_ids, decision, comment)` | admin | `decision`: `APPROVE` or `REJECT` |
 | `core.create_code_set(code_set, description, domain, owner_name)` | admin | Create a code set |
 | `core.create_mapping_set(mapping_set, description, source_system, target_code_set)` | admin | Create a mapping set |
@@ -732,6 +801,8 @@ date or an unknown code) is marked `FAILED` with the reason, and the others are 
 | `core.set_container_status(container_type, name, status)` | admin | `container_type`: `CODE_SET`, `MAPPING_SET`, `HIERARCHY`, `MANAGED_TABLE`; `status`: `ACTIVE` or `RETIRED` |
 | `core.set_setting(setting_key, setting_value)` | admin | `require_approval`, `allow_self_approval`, `require_change_reason`, `ai_suggestions_enabled` (`true`/`false`) |
 | `core.set_settings(settings)` | admin | Several settings at once, all or nothing: `PARSE_JSON('{"require_approval": "true", "require_change_reason": "true"}')`. Every key is checked first; only changed values are saved and audited. Returns `settings` and `changed`. |
+| `core.set_email_notifications(integration, test_recipient)` | admin | Turn email notifications on through an email notification integration the app may use (`test_recipient` optional: a test email is sent first, and nothing is saved unless Snowflake accepts it - a refusal returns Snowflake's `error` and the set-up SQL as `fix`), or off with `integration` NULL (also deletes every recorded email). Audited as `SET_EMAIL_NOTIFICATIONS` |
+| `core.note_contact(email)`, `core.note_admin_contact(email)` | steward, admin | Used by the Steward and Admin consoles: record the caller's verified email for notifications, only while they are on (the admin one also makes the caller someone to ask for approval). Not audited |
 | `core.plan_usage()` | admin | Editors active in the last 30 days against the editors your plan includes: `active_editors`, `included_editors`, `over` |
 | `core.check_ai()` | admin | Whether the app can call Cortex `AI_EMBED` (one embedding of a few tokens): `available`, `enabled` (the `ai_suggestions_enabled` setting), `model`, `region`; when not available, Snowflake's `error` and the GRANT that usually fixes it (`fix`) - or, on a Snowflake trial account, `trial` = true and no `fix` (Snowflake doesn't offer AI functions on trials) |
 | `core.set_approval_policy(container_type, name, policy)` | admin | `policy`: `DEFAULT`, `REQUIRED` or `NOT_REQUIRED` |
@@ -786,7 +857,7 @@ what it was about - the code set, mapping set, hierarchy or managed table, the c
 attribute or column, and sometimes the value that was refused or the allowed values (for example
 "currency: GBP is not a valid CURRENCY code"). An unexpected error includes Snowflake's error message,
 which can quote a value involved, and a stack trace of the app's code. The app never logs whole rows,
-pasted rows or uploaded files, comments, or your users' names (a message that names stewards in the
+pasted rows or uploaded files, comments, email addresses, or your users' names (a message that names stewards in the
 console is logged with only their number). If your codes or row keys are themselves personal data (for
 example employee numbers), they can appear in these messages. **INFO usage logs** are optional and off
 by default: per call, the time taken and the number of statements, and per review the number of changes
@@ -825,6 +896,7 @@ Apart from any listing price, the app only uses Snowflake compute and storage in
 | The app's tables (codes, history, audit log) | - | Storage, typically a few MB |
 | AI mapping suggestions (only if an Admin turns them on) | Cortex `AI_EMBED` on the app's warehouse | Cortex AI usage: about 10 tokens per code, each target code embedded once - see [Mapping suggestions](#mapping-suggestions) |
 | Questions to the agent or the MCP server's Cortex Analyst tool | Cortex Agents / Cortex Analyst, with their queries on the app's warehouse | Cortex AI usage per question, plus that warehouse - see [AI agents and MCP](#ai-agents-and-mcp) |
+| Email notifications (only if an Admin turns them on) | Sent within the submission or review that triggers them, on the same warehouse | That warehouse's time for the extra statements |
 
 Each action in a console takes a few seconds of warehouse time; a code set of 50,000 codes is
 imported in about 30 s. To see what the app itself costs:

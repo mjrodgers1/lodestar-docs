@@ -1,13 +1,15 @@
 # GitHub Pages site for www.lodestardataservices.com (built by GitHub from the lodestar-docs repo).
-# Source: release/docs/site/ in the Lodestar repo; release/publish_docs.ps1 copies it there.
+# Source: release/docs/site/ in the Lodestar repo; release/publish_docs.ps1 copies it there, with the
+# documentation pages that release/build_docs.py makes from app/README.md.
 title: Lodestar Data Services
 description: Governed reference data and table editing inside your own Snowflake account.
 email: support@lodestardataservices.com
 url: https://www.lodestardataservices.com
-theme: minima
-header_pages:
-  - docs/index.md
-  - privacy/index.md
-# README.md is the repository's front page on github.com; the site serves it as /docs/ instead.
+# The site's own layouts (_layouts/) and stylesheet (assets/css/site.css); no theme.
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+# README.md is the repository's front page on github.com; the site serves the docs under /docs/ instead.
 exclude:
   - README.md

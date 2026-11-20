@@ -1,0 +1,19 @@
+# Made by release/build_docs.py: the documentation sidebar, in order.
+- title: "Overview"
+  url: /docs/
+- title: "Install and set up"
+  url: /docs/getting-started/
+- title: "Using the app"
+  url: /docs/using-the-app/
+- title: "Mapping suggestions"
+  url: /docs/mappings/
+- title: "Managed tables"
+  url: /docs/managed-tables/
+- title: "AI agents and MCP"
+  url: /docs/ai-and-mcp/
+- title: "Working with your existing tables"
+  url: /docs/existing-tables/
+- title: "SQL reference"
+  url: /docs/sql-reference/
+- title: "Plan, cost and support"
+  url: /docs/plan-cost-support/

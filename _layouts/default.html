@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.title and page.title != "Home" %}{{ page.title }} | {% endif %}{{ site.title }}</title>
+  <meta name="description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+  <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ site.title }}">
+  <meta property="og:title" content="{% if page.title and page.title != "Home" %}{{ page.title }} | {% endif %}{{ site.title }}">
+  <meta property="og:description" content="{% if page.description %}{{ page.description }}{% else %}{{ site.description }}{% endif %}">
+  <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+  <meta property="og:image" content="{{ site.url }}/assets/img/social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="{{ '/assets/img/logo.svg' | relative_url }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ '/assets/img/favicon-32.png' | relative_url }}">
+  <link rel="apple-touch-icon" href="{{ '/assets/img/apple-touch-icon.png' | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="{{ '/' | relative_url }}">
+        <img src="{{ '/assets/img/logo.svg' | relative_url }}" alt="" width="34" height="34">
+        <span class="brand-name">Lodestar</span><span class="brand-sub">Data Services</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="{{ '/docs/' | relative_url }}">Documentation</a>
+        <a href="{{ '/#plans' | relative_url }}">Plans</a>
+        <a href="{{ '/privacy/' | relative_url }}">Privacy</a>
+        <a class="nav-cta" href="mailto:{{ site.email }}">Contact us</a>
+      </nav>
+    </div>
+  </header>
+  <main id="content">
+{{ content }}
+  </main>
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <div>
+        <strong>Lodestar Data Services</strong><br>
+        A Snowflake Native App for governed reference data.<br>
+        <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+      </div>
+      <nav aria-label="Footer">
+        <a href="{{ '/docs/' | relative_url }}">Documentation</a>
+        <a href="{{ '/privacy/' | relative_url }}">Privacy notice</a>
+      </nav>
+    </div>
+    <div class="wrap fineprint">Snowflake is a trademark of Snowflake Inc. Lodestar Data Services is not affiliated with or endorsed by Snowflake Inc.</div>
+  </footer>
+</body>
+</html>
