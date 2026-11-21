@@ -3,6 +3,7 @@ layout: docs
 title: "Managed tables"
 description: "Govern edits to your own tables where they live."
 permalink: /docs/managed-tables/
+sidebar: docs
 prev_url: /docs/mappings/
 prev_title: "Mapping suggestions"
 next_url: /docs/ai-and-mcp/

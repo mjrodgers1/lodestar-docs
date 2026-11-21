@@ -3,6 +3,7 @@ layout: docs
 title: "Mapping suggestions"
 description: "Suggested target codes for source codes, from exact and alias matches to AI similarity."
 permalink: /docs/mappings/
+sidebar: docs
 prev_url: /docs/using-the-app/
 prev_title: "Using the app"
 next_url: /docs/managed-tables/

@@ -3,6 +3,7 @@ layout: docs
 title: "AI agents and MCP"
 description: "The Cortex Agent, the MCP server, the semantic view and the lookup functions."
 permalink: /docs/ai-and-mcp/
+sidebar: docs
 prev_url: /docs/managed-tables/
 prev_title: "Managed tables"
 next_url: /docs/existing-tables/

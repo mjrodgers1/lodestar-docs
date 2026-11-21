@@ -3,6 +3,7 @@ layout: docs
 title: "Using the app"
 description: "Every page of the consoles, and sizing and limits."
 permalink: /docs/using-the-app/
+sidebar: docs
 prev_url: /docs/getting-started/
 prev_title: "Install and set up"
 next_url: /docs/mappings/

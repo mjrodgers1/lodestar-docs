@@ -3,6 +3,7 @@ layout: docs
 title: "Plan, cost and support"
 description: "Telemetry, the trial and plan, running cost, uninstalling and support."
 permalink: /docs/plan-cost-support/
+sidebar: docs
 prev_url: /docs/sql-reference/
 prev_title: "SQL reference"
 ---

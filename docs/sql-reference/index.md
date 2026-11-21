@@ -3,6 +3,7 @@ layout: docs
 title: "SQL reference"
 description: "The published views and functions, and every stored procedure."
 permalink: /docs/sql-reference/
+sidebar: docs
 prev_url: /docs/existing-tables/
 prev_title: "Working with your existing tables"
 next_url: /docs/plan-cost-support/

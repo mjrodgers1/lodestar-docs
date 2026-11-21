@@ -1,0 +1,11 @@
+# Made by release/build_docs.py: the documentation sidebar, in order.
+- title: "Overview"
+  url: /lodestar-privacy/docs/
+- title: "Install and set up"
+  url: /lodestar-privacy/docs/getting-started/
+- title: "Using the app"
+  url: /lodestar-privacy/docs/using-the-app/
+- title: "SQL reference"
+  url: /lodestar-privacy/docs/sql-reference/
+- title: "Plan, cost and support"
+  url: /lodestar-privacy/docs/plan-cost-support/

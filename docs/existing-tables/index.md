@@ -3,6 +3,7 @@ layout: docs
 title: "Working with your existing tables"
 description: "Lookups, translations, data-quality checks and taking existing tables under control."
 permalink: /docs/existing-tables/
+sidebar: docs
 prev_url: /docs/ai-and-mcp/
 prev_title: "AI agents and MCP"
 next_url: /docs/sql-reference/

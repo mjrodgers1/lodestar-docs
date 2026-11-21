@@ -1,0 +1,130 @@
+---
+layout: default
+title: Lodestar Privacy
+description: Right-to-erasure requests carried out inside your own Snowflake account, with maker/checker approval, legal holds and an evidence report for every request.
+permalink: /lodestar-privacy/
+---
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">A Snowflake Native App - part of the Lodestar suite</p>
+      <h1>Erase people from your Snowflake tables, and prove it</h1>
+      <p class="lead">Right-to-erasure requests carried out inside your own Snowflake account: approved by a second
+        person, stopped by legal holds, and finished with a report of what was erased, when, by which query, and
+        until when it could still be recovered.</p>
+      <p class="hero-actions">
+        <a class="button primary" href="mailto:{{ site.email }}?subject=Lodestar%20Privacy%20trial">Ask for a trial</a>
+        <a class="button ghost" href="{{ '/lodestar-privacy/docs/' | relative_url }}">Read the documentation</a>
+      </p>
+      <p class="hero-note">Coming to the Snowflake Marketplace. Full functionality free for 30 days.</p>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar"><span></span><span></span><span></span><b>Evidence: DSR-2026-041</b></div>
+      <table>
+        <thead><tr><th>Table</th><th>Action</th><th>Rows</th><th>Unrecoverable after</th></tr></thead>
+        <tbody>
+          <tr><td>CRM.CUSTOMERS</td><td>Delete</td><td>2</td><td>2026-12-09</td></tr>
+          <tr><td>ERP.ORDERS</td><td>Anonymise</td><td>14</td><td>2026-12-09</td></tr>
+          <tr class="changed"><td>SUPPORT.TICKETS</td><td>Held</td><td>-</td><td>legal hold</td></tr>
+        </tbody>
+      </table>
+      <div class="mock-review">
+        <div><b>Approved by a second officer</b><br><small>Received 18 Nov, due 18 Dec - identifiers deleted when it closes</small></div>
+        <span class="pill">PDF</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2>One controlled place for every erasure</h2>
+    <p class="section-lead">One-off DELETE scripts leave no proof and no second pair of eyes. Lodestar Privacy gives
+      every request an approver, a hold check, a checked transaction per table and a report.</p>
+    <div class="cards">
+      <div class="card">
+        <h3>Register your tables once</h3>
+        <p>Say which columns identify a person - email, customer id, phone or your own - and whether their rows are
+          deleted or anonymised, e.g. orders kept for accounting with the person's columns cleared.</p>
+      </div>
+      <div class="card">
+        <h3>See what a request touches</h3>
+        <p>Enter a request in the console, upload many, or feed them from your DSAR tool in SQL. The rows each table
+          holds about the person are counted at once - counts only.</p>
+      </div>
+      <div class="card">
+        <h3>Maker/checker and legal holds</h3>
+        <p>A second officer approves every request. Holds on a person, a table or everything stop erasure until
+          they are released, and the evidence shows what they held.</p>
+      </div>
+      <div class="card">
+        <h3>Carried out, checked, recorded</h3>
+        <p>Every night (or now), each table in one transaction: count, erase, check exactly those rows changed, record
+          the evidence - or change nothing.</p>
+      </div>
+      <div class="card">
+        <h3>Evidence for auditors</h3>
+        <p>Per request and table: rows, the Snowflake query id, the approver, the holds, and the Time Travel and
+          Fail-safe dates after which nobody can recover the data. PDF, CSV, JSON or SQL.</p>
+      </div>
+      <div class="card">
+        <h3>Personal data minimised</h3>
+        <p>Identifiers stay in your account, only while the request is open, and never reach logs, reports or emails;
+          afterwards only salted hashes remain, so holds and repeat requests still match.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="privacy-plans">
+  <div class="wrap plans">
+    <div>
+      <h2>One plan</h2>
+      <p class="section-lead">Try every feature free for 30 days. When you buy, the same install carries on with all
+        your evidence.</p>
+      <ul class="ticks">
+        <li>Unlimited requests, tables and users</li>
+        <li>Approval, legal holds and evidence reports included</li>
+        <li>No implementation fee</li>
+        <li>Low running cost: one X-Small warehouse, a nightly run only while requests are open</li>
+      </ul>
+    </div>
+    <div class="price-card">
+      <p class="price-label">Standard</p>
+      <p class="price"><span>USD</span> 990<small> / month</small></p>
+      <p class="price-alt">or USD 9,900 / year</p>
+      <a class="button primary" href="mailto:{{ site.email }}?subject=Lodestar%20Privacy%20trial">Ask for a trial</a>
+      <p class="price-note">With Lodestar Data Services as well: ask us for the suite price.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap faq">
+    <h2>Questions</h2>
+    <details>
+      <summary>Does personal data leave our Snowflake account?</summary>
+      <p>No. The app runs in your account and keeps the identifiers there, only while a request is open. It shares
+        only error and warning logs with us, and they never contain identifiers or values from your tables. See
+        <a href="{{ '/lodestar-privacy/docs/plan-cost-support/#telemetry' | relative_url }}">Telemetry</a>.</p>
+    </details>
+    <details>
+      <summary>Can erased data still be recovered?</summary>
+      <p>For a while, by Snowflake's design: Time Travel keeps changed rows for the table's retention period, then
+        Fail-safe for 7 more days (permanent tables). The evidence gives both dates for every table. See
+        <a href="{{ '/lodestar-privacy/docs/using-the-app/#evidence' | relative_url }}">Evidence</a>.</p>
+    </details>
+    <details>
+      <summary>What doesn't it erase?</summary>
+      <p>Anything outside the tables you register: clones, replicas, data shared to other accounts, files in stages,
+        backups and exports, and other systems. The evidence report says so.</p>
+    </details>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <h2>Try it on a test table</h2>
+    <p>E-mail <a href="mailto:{{ site.email }}">{{ site.email }}</a> for a trial. We reply within 1 business day.</p>
+  </div>
+</section>

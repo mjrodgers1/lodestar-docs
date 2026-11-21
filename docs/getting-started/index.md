@@ -3,6 +3,7 @@ layout: docs
 title: "Install and set up"
 description: "The privileges the app asks for, the 5-minute start and post-install configuration."
 permalink: /docs/getting-started/
+sidebar: docs
 prev_url: /docs/
 prev_title: "Overview"
 next_url: /docs/using-the-app/

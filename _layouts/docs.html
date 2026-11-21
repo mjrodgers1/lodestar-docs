@@ -3,9 +3,11 @@ layout: default
 ---
 <div class="wrap docs">
   <nav class="docs-nav" aria-label="Documentation">
-    <p class="docs-nav-title">Documentation</p>
+    {% if page.sidebar == "privacy_docs" %}<p class="docs-nav-title">Lodestar Privacy</p>
+    {% for item in site.data.privacy_docs %}<a href="{{ item.url | relative_url }}"{% if item.url == page.url %} class="current" aria-current="page"{% endif %}>{{ item.title }}</a>
+    {% endfor %}{% else %}<p class="docs-nav-title">Documentation</p>
     {% for item in site.data.docs %}<a href="{{ item.url | relative_url }}"{% if item.url == page.url %} class="current" aria-current="page"{% endif %}>{{ item.title }}</a>
-    {% endfor %}
+    {% endfor %}{% endif %}
   </nav>
   <article class="prose">
 {{ content }}

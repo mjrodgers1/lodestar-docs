@@ -3,6 +3,7 @@ layout: docs
 title: "Overview"
 description: "What the app does, and its features."
 permalink: /docs/
+sidebar: docs
 next_url: /docs/getting-started/
 next_title: "Install and set up"
 ---
