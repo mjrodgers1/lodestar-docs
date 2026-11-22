@@ -88,10 +88,11 @@ CALL <app>.core.register_target(
   7, 'PERMANENT', 'Orders kept for accounting');
 ```
 
-The Time Travel days are the table's `DATA_RETENTION_TIME_IN_DAYS` (`SHOW TABLES` shows it as
-`retention_time`); the evidence uses them to say until when erased rows can be recovered. Snowflake doesn't
-let an app read this setting through a reference, so it is declared here - update the target if you change
-the table.
+The Time Travel days are the table's effective retention: its `DATA_RETENTION_TIME_IN_DAYS` (`SHOW TABLES`
+shows it as `retention_time`) or, if greater, your account's minimum (`SHOW PARAMETERS LIKE
+'MIN_DATA_RETENTION_TIME_IN_DAYS' IN ACCOUNT`) - at most 1 for a transient table. The evidence uses them to say
+until when erased rows can be recovered. Snowflake doesn't let an app read these settings through a reference,
+so they are declared here - update the target if you change the table or the account minimum.
 
 ### 4. Email notifications (optional) {#4-email-notifications-optional}
 

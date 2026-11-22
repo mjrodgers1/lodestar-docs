@@ -73,7 +73,7 @@ The report also lists the legal holds that applied and the request's trail (subm
 completed - by whom and when), and states what is **not** covered: copies outside the registered tables -
 clones, replicas, data shared to other accounts, stages and files, backups and exports, logs - and any table
 not registered in the app. Lower a table's Time Travel days if your policy needs erased data to become
-unrecoverable sooner.
+unrecoverable sooner (an account minimum, `MIN_DATA_RETENTION_TIME_IN_DAYS`, overrides lower table settings).
 
 ## Sizing and limits {#sizing-and-limits}
 
