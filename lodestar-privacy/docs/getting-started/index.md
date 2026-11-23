@@ -33,8 +33,8 @@ The app requests no access to any other object in your account.
 
 1. **Grant roles** (SQL below): `admin` to your privacy lead, `officer` to the people who handle requests (at
    least two, so one can approve what another submits), `viewer` to auditors. Grant the app `READ SESSION`.
-2. **Add your tables** (Admin console -> Targets -> *Add a table*), then **register** each: the columns that
-   identify a person, delete or anonymise, and the table's Time Travel days.
+2. **Add your tables** (Admin console -> Targets -> *Add a table*, or the SQL in step 3 below), then **register**
+   each: the columns that identify a person, delete or anonymise, and the table's Time Travel days.
 3. **Submit a test request** for a test person (Officer console -> Requests) and look at the counts.
 4. **Approve it** as a second officer (Approvals), then **Run erasures now** (Admin console -> Settings & audit
    -> Daily run) - or wait for the nightly run.
@@ -66,7 +66,9 @@ GRANT READ SESSION ON ACCOUNT TO APPLICATION <app>;
 
 ### 3. Add the tables that hold personal data {#3-add-the-tables-that-hold-personal-data}
 
-In Snowsight: Admin console -> **Targets** -> **Add a table** (or the app's **Security** tab). From SQL:
+In the Admin console -> **Targets** -> **Add or remove tables**, *Add a table* opens Snowflake's permission
+dialog where Snowsight offers it; where it doesn't, the page shows this SQL instead. Run it as a role that has
+the app's `admin` role (step 1) and owns the table, then press *Reload tables*:
 
 ```sql
 CALL <app>.config.register_reference('PERSONAL_DATA_TABLES', 'ADD',

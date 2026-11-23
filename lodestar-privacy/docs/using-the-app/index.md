@@ -61,8 +61,7 @@ reason or reference.
 ## Evidence {#evidence}
 
 For each request and table the evidence records the action, the rows affected, when it ran, the Snowflake
-query id of the `DELETE` / `UPDATE` (look it up in your query history), the table's declared Time Travel days
-and kind, and:
+query id of the `DELETE` / `UPDATE`, the table's declared Time Travel days and kind, and:
 
 - **recoverable until** - the end of Time Travel for the change: until then, anyone with access to the
   table can still read or restore the old rows (`AT` / `BEFORE`, `UNDROP`);
@@ -74,6 +73,12 @@ completed - by whom and when), and states what is **not** covered: copies outsid
 clones, replicas, data shared to other accounts, stages and files, backups and exports, logs - and any table
 not registered in the app. Lower a table's Time Travel days if your policy needs erased data to become
 unrecoverable sooner (an account minimum, `MIN_DATA_RETENTION_TIME_IN_DAYS`, overrides lower table settings).
+
+**Checking a query id.** An account administrator can find each statement in Snowflake's query history, e.g.
+`SELECT query_type, user_name, role_name, rows_deleted, rows_updated FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE query_id = '<query id>';` (up to 45 minutes' delay; `TABLE(<db>.INFORMATION_SCHEMA.QUERY_HISTORY())` has
+none). It shows a DELETE or UPDATE with the rows it changed, run as the app's role. Snowflake hides the text of
+an app's own statements, so no identifier shows there either.
 
 ## Sizing and limits {#sizing-and-limits}
 
