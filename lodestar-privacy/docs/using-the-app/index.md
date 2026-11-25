@@ -74,10 +74,11 @@ reason or reference.
   PENDING, RUNNING (being erased), HELD, NEEDS_REVIEW (table added or changed after the approval), DONE,
   FAILED or SKIPPED (the request was withdrawn or closed, or the table retired, before it ran).
 - **Identifiers are deleted** from the app when a request closes, whatever the outcome. The table that held
-  them is transient with no Time Travel, so they can't be recovered from the app afterwards - unless your
-  account sets a minimum Time Travel (`MIN_DATA_RETENTION_TIME_IN_DAYS`): Snowflake then keeps deleted rows
-  of a transient table for up to 1 day (never longer, and no Fail-safe). The app's own tables aren't granted
-  to any role, so only the app could read them.
+  them is transient with no Time Travel, so they can't be recovered from the app afterwards - also when your
+  account sets a minimum Time Travel (`MIN_DATA_RETENTION_TIME_IN_DAYS`): measured on 25 Nov 2026 with a
+  minimum of 1 and 7 days, a transient table at 0 stays at 0 (a deleted row can't be read back) and the app's
+  identifier table reports retention 0 and no Time Travel bytes. The app's own tables aren't granted to any
+  role, so only the app could read them.
 
 ## Evidence {#evidence}
 
@@ -96,7 +97,8 @@ changed), the legal holds that applied and the request's trail (submitted, appro
 whom and when). It states what is **not** covered: copies outside the registered tables -
 clones, replicas, data shared to other accounts, stages and files, backups and exports, logs - and any table
 not registered in the app. Lower a table's Time Travel days if your policy needs erased data to become
-unrecoverable sooner (an account minimum, `MIN_DATA_RETENTION_TIME_IN_DAYS`, overrides lower table settings).
+unrecoverable sooner (an account minimum, `MIN_DATA_RETENTION_TIME_IN_DAYS`, overrides lower settings of
+permanent tables; measured: not of a transient table set to 0).
 
 **Checking a query id.** An account administrator can find each statement in Snowflake's query history, e.g.
 `SELECT query_type, user_name, role_name, rows_deleted, rows_updated FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY

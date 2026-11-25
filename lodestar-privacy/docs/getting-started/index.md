@@ -92,7 +92,9 @@ CALL <app>.core.register_target(
 
 The Time Travel days are the table's effective retention: its `DATA_RETENTION_TIME_IN_DAYS` (`SHOW TABLES`
 shows it as `retention_time`) or, if greater, your account's minimum (`SHOW PARAMETERS LIKE
-'MIN_DATA_RETENTION_TIME_IN_DAYS' IN ACCOUNT`) - at most 1 for a transient table. The evidence uses them to say
+'MIN_DATA_RETENTION_TIME_IN_DAYS' IN ACCOUNT`) - at most 1 for a transient table. Measured on 25 Nov 2026
+(`tests/platform/retention_minimum.py`): the account minimum raised a permanent table set to 0 (to 1, and 7),
+but not a transient one - a transient table set to 0 stayed at 0 and its deleted rows were gone at once. The evidence uses them to say
 until when erased rows can be recovered. Snowflake doesn't let an app read these settings through a reference,
 so they are declared here - update the target if you change the table or the account minimum.
 

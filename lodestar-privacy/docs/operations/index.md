@@ -32,9 +32,10 @@ next_title: "Plan, cost and support"
   committed or changed nothing. The next run - the next night, or *Run now* once 30 minutes have passed
   without a heartbeat - marks it failed and carries on.
 - **Upgrades** keep every request, its evidence, the task's state and schedule. Requests approved before an
-  upgrade stay approved at their tables' definitions then. Settings you saved are kept: if an Admin pressed
-  **Save** in Settings on 1.0.x, the due date stays the 30 days stored then (1.0.x's default) - set it to 0 in
-  Settings for one calendar month. Until then a request received on 31 January is due 2 March, after the month.
+  upgrade stay approved at their tables' definitions then. Settings you saved are kept. The deadline: an install
+  that kept 1.0.x's default (30 days) moves to one calendar month on upgrade, as it never stored the 30; one that
+  stored 30 (changed, then set back) is reset to one calendar month once, on upgrade to 1.1.1 (audited as
+  SET_SETTING by SYSTEM, with the value it was). Set 30 again in Settings if you want it; later upgrades leave it.
 - **When the app can't run** (e.g. Snowflake disables it when a trial ends without a purchase): nothing runs,
   and open requests wait - their deadlines don't. Once it runs again the next run carries on; check Overview.
 - **Before uninstalling**: export the evidence (Evidence -> Export all evidence, and the PDF of any request you
