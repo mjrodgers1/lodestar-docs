@@ -5,8 +5,9 @@ business and data teams to maintain the data everything else depends on - custom
 and cost-centre codes, financial hierarchies, country and currency codes, cross-system mappings, and
 your own control tables such as price lists and thresholds. Business users work in a familiar grid;
 every change gets maker/checker approval, effective dating and a complete audit trail, and is live in
-your queries as soon as it is approved (or on its effective date). Your data stays in your account; only
-error and warning logs reach us (see [Telemetry](#telemetry)).
+your queries as soon as it is approved (or on its effective date). Your data stays in your account: the logs
+that reach us carry fixed messages, counts and Snowflake's error codes - never your codes, rows or values -
+and the AI features run on Snowflake Cortex (see [What leaves your account](#what-leaves-your-account)).
 
 ## Features
 
@@ -14,7 +15,9 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
 - **Typed attributes**: Admins define attributes per code set (text, number, true/false, date, or a
   reference to another code set, with required / max length / allowed values). They appear as typed
   columns in the editor and are validated on submit and on approval. Code sets without definitions
-  accept free-form JSON attributes.
+  accept free-form JSON attributes. Numbers are kept exactly: whole numbers of up to 38 digits, numbers with
+  decimals of up to 15 significant digits, at most the attribute's decimal places if an Admin sets them -
+  anything else is refused, never rounded.
 - **Effective dating**: every change has an effective date; full version history is kept and any
   point in time can be queried. Same-day edits correct the current version instead of versioning it.
 - **Mappings**: crosswalks from source-system codes to a governed code set, validated against the target.
@@ -23,14 +26,17 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
   same code or description, a matching attribute (e.g. ISO3 `IRL` -> `IE`) and - once an Admin turns it
   on - AI similarity with Snowflake Cortex (`Deutschland` -> `DE`). Stewards accept or correct them;
   accepted ones go through the normal approval rules.
-- **Hierarchies**: parent/child trees over a code set, with cycle detection.
+- **Hierarchies**: parent/child trees over a code set. A change that would make a loop is refused - on its
+  effective date and on every later date an approved change takes effect.
 - **Check a column**: point Lodestar at a column of one of your tables or views and see which of its values
   aren't codes of a code set, or aren't mapped by a mapping set, today - and why: missing, valid only from
   a later date, no longer valid, waiting for approval, or blank - with the number of rows each affects.
   Changes nothing.
 - **Scheduled checks**: an Admin saves a Check a column to run daily or weekly. The app runs it on its own
-  warehouse, keeps every result, and emails the values that became problems since the run before (when
-  email notifications are on) to whoever scheduled it and the set's named stewards. See step 11 below.
+  warehouse, keeps each run's result for 400 days, and emails the values that became problems since the run
+  before (when email notifications are on) to whoever scheduled it and the set's named stewards. Unscheduling
+  a check deletes its results - export them first if you need them. See
+  [step 11](#11-optional-schedule-column-checks).
 - **Maker/checker workflow**: Stewards propose changes, Admins approve or reject them. Self-approval
   is blocked by default (a requester can still reject - i.e. withdraw - their own request). Approval
   can be required or waived per code set, mapping set or hierarchy.
@@ -38,13 +44,14 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
 - **Change reasons and tickets**: every submission can carry a reason and a ticket reference (e.g. Jira,
   ServiceNow). Approvers see both, and both stay with the resulting versions in the history. Admins can
   make the reason mandatory.
-- **Revert**: undo an applied change in one click; the undo goes through the same approval rules.
+- **Revert**: undo an applied change in one click; the undo goes through the same approval rules. Undoing
+  a deleted managed-table row puts the whole row back.
 - **My work**: Stewards and Admins land on their own work queue - submissions waiting for their review,
   their own open submissions, and decisions on their changes in the last 14 days (with the reviewer's
   comment, e.g. why a change was rejected). The sidebar shows how many need them.
 - **Email notifications** (optional): Admins are emailed when changes wait for their approval, and
   requesters when their changes are approved or rejected - sent by Snowflake, only to verified emails of
-  users in your account. See step 10 below.
+  users in your account. See [step 10](#10-optional-email-approvers-and-requesters).
 - **Comments**: discuss any change request or whole submission. Comments are kept with the request,
   audited, and never edited or deleted (add another to correct one).
 - **Bulk import**: paste rows copied from Excel, upload a CSV or Excel (.xlsx) file, or load from any
@@ -72,8 +79,8 @@ error and warning logs reach us (see [Telemetry](#telemetry)).
 | Privilege | Why |
 |---|---|
 | `CREATE WAREHOUSE` | The app creates one X-Small warehouse named `<APP_NAME>_WH` (standard Gen1, query acceleration off, auto-suspend 60 s, initially suspended). The app's consoles and the procedures they call run on it, so this compute is isolated from your workloads and its cost is attributable to the app (see Cost). Roles with `viewer` get USAGE on it because the agent's and MCP server's tools run there with the caller's rights (see [AI agents and MCP](#ai-agents-and-mcp)); those roles can also run their own queries on it. |
-| `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see step 2 below. Calls you make from SQL always record your own user, either way. |
-| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due (step 11). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
+| `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see [step 2](#2-recommended-let-snowflake-identify-console-users). Calls you make from SQL always record your own user, either way. |
+| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due ([step 11](#11-optional-schedule-column-checks)). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
 
 Optional references (each can hold as many objects as you like):
 
@@ -90,13 +97,13 @@ Optional database role in the SNOWFLAKE database:
 
 | Role | Why |
 |---|---|
-| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions, and only if **Test AI access** asks for it: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see step 5 below. Without AI access, suggestions use exact and alias matches only. |
+| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions, and only if **Test AI access** asks for it: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see [step 5](#5-optional-turn-on-ai-mapping-suggestions). Without AI access, suggestions use exact and alias matches only. |
 
 ## Get started in 5 minutes
 
 1. **Grant roles** (SQL below): `admin` to yourself, `steward` to whoever proposes changes,
    `viewer` to readers. Approvals need two people: one proposes, another approves. Also grant the
-   app `READ SESSION` (step 2) so Snowflake identifies console users.
+   app `READ SESSION` ([step 2](#2-recommended-let-snowflake-identify-console-users)) so Snowflake identifies console users.
 2. **Open the Admin console** (Snowsight -> Catalog -> Apps -> the app -> *Lodestar - Admin*).
    Its Home page shows a **set-up checklist** that ticks itself off as you go.
 3. **Create a code set** (Code Sets) or try the COUNTRY / CURRENCY samples.
@@ -232,7 +239,7 @@ ALTER USER <user_name> SET ALLOWED_INTERFACES = (STREAMLIT);
 ```
 
 From a direct link, Snowflake cannot show permission dialogs, so adding import sources or managed
-tables (steps 3 and 4) and granting READ SESSION (step 2) must be done in Snowsight or with the SQL above.
+tables (steps 3 and 4) and granting READ SESSION ([step 2](#2-recommended-let-snowflake-identify-console-users)) must be done in Snowsight or with the SQL above.
 
 ### 9. (Optional) Choose when upgrades happen
 
@@ -288,7 +295,7 @@ the day). From then on:
 - Once a day, at the time set in **Audit & Settings -> Settings -> Scheduled checks** (default 06:00 UTC; any
   time zone), the app's task runs the checks that are due, on the app's warehouse.
 - Each run is kept (`core.check_runs`, 400 days) and compared with the one before. Values that became
-  problems since then are emailed - when email notifications are on (step 10) - to whoever scheduled the
+  problems since then are emailed - when email notifications are on ([step 10](#10-optional-email-approvers-and-requesters)) - to whoever scheduled the
   check and the code set's or mapping set's named stewards, if their email is recorded. The email lists up
   to 20 of the new values with their rows and reason. A check that starts failing (for example because its
   table was removed from the app) emails the error once.
@@ -320,13 +327,13 @@ Mappings, Hierarchies, Bulk Import), **Managed tables**, **Governance** (Approva
 | My work | Steward / Admin | One row per submission: **Awaiting my review** (Admins: pending changes they may approve - not their own unless self-approval is on), **My open submissions**, and **Decided in the last 14 days** (rejected, failed or approved by a reviewer, with the review comment and any error; changes applied automatically are listed only if they failed). Pick a submission to read or add comments. The sidebar count is submissions awaiting your review plus those returned to you (rejected or failed); it refreshes after each action or with **Refresh**. Above them, scheduled checks that found new problems in the last 7 days. |
 | Home | all | Counts, and for Admins the set-up checklist and plan usage. |
 | Code Sets | all / Admin | Browse code sets. Admins create, retire and reactivate them, set the approval policy and stewards, and define attributes. |
-| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. **Check a column** (Steward): pick a column of an import source and see which of its values aren't codes of the code set today (see [Pattern 3](#pattern-3---check-data-quality)); Admins can schedule it (step 11), and the scheduled checks of the code set are listed there with their latest result. |
-| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. **Check a column** (Steward): which values of a column the mapping set doesn't map today; Admins can schedule it (step 11). |
+| Code Values | all / Steward | View codes as of any date. Stewards edit a grid (add, change, delete = retire) and submit with an effective date. **Check a column** (Steward): pick a column of an import source and see which of its values aren't codes of the code set today (see [Pattern 3](#pattern-3---check-data-quality)); Admins can schedule it ([step 11](#11-optional-schedule-column-checks)), and the scheduled checks of the code set are listed there with their latest result. |
+| Mappings | all / Steward | Map source codes to target codes. Admins create mapping sets. **Suggest** (Steward): paste source codes or pick a column of an import source, and review the suggested targets - each with its score, method (exact, alias, AI similarity), reason and the next best alternatives; tick the ones to accept (change the target if needed) and submit them as mapping changes. **Check a column** (Steward): which values of a column the mapping set doesn't map today; Admins can schedule it ([step 11](#11-optional-schedule-column-checks)). |
 | Hierarchies | all / Steward | View the tree. Stewards set each code's parent (empty = root). |
 | Approvals | Steward / Admin | Stewards track pending requests; Admins approve or reject them, per request or a whole batch (one grid save, import or revert) at a time. A change that fails validation is marked `FAILED` with the reason; the others are applied. Under **Recent decisions**, select applied changes and **Revert** them. Every grid has a **comments** count; pick a request or submission under it to read its thread (comments plus review decisions) and add a comment. |
 | Bulk Import | Steward | **Paste or upload rows**: paste cells copied from Excel or CSV text, or upload a CSV / TSV / TXT or Excel (.xlsx; pick the sheet) file of up to 25 MB - the first row is the header and must include `CODE`; check the preview (empty rows are skipped) and import. Up to 50,000 rows per run. Or import **from a table or view**: pick one of the sources an Admin added (your own or shared databases), check the preview, map its columns to the code, description, sort order, valid-from date, parent code (with a hierarchy) and typed attributes, and run it. The mapping is remembered per source and code set. Admins add and remove sources here. |
 | Managed tables | Steward / Admin | **Edit rows**: pick a table, search, and edit its rows in a grid (editable columns are typed; key columns marked; other columns shown for reference). Add or delete rows where the table allows it, give a reason and ticket, and submit. Key values of existing rows can't be edited (delete the row and add a new one). **Pending changes**: each change as before -> after, with comments. **History**: every applied change per column, for the whole table or one row, with comments. **Set up** (Admin): add or remove tables, register key / editable / audit columns and what Stewards may do, approval policy, stewards, retire. See [Managed tables](#managed-tables). |
-| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), turn email notifications on or off and see who is recorded for them (step 10), set when scheduled checks run and **Check the schedule** (step 11), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
+| Audit & Settings | Admin | Search the audit log, toggle approval requirements, mandatory change reasons and AI mapping suggestions (with **Test AI access**), turn email notifications on or off and see who is recorded for them ([step 10](#10-optional-email-approvers-and-requesters)), set when scheduled checks run and **Check the schedule** ([step 11](#11-optional-schedule-column-checks)), check how users are identified (READ SESSION) and event sharing. The Settings tab always shows the values as stored now, and **Save settings** changes only the switches you changed, so two Admins can't undo each other's changes. Other pages read the settings when the console opens - press **Refresh** in the sidebar after another Admin changes them. |
 | Connect | all | Whether the Cortex Agent and MCP server are available, the MCP endpoint, the MCP tools, how to connect Snowflake CoWork, Cortex Code, other MCP clients and your own agents, and example questions. See [AI agents and MCP](#ai-agents-and-mcp). |
 
 Creating or retiring sets and saving settings takes a second or two; saving changes, approving or
@@ -409,9 +416,13 @@ ones to accept (exact and alias matches, and AI ones above an adjustable score, 
 can pick another target, and submits them as ordinary mapping changes - approval, stewards, reasons and
 history apply as usual. Each run is audited as `SUGGEST_MAPPINGS` (it doesn't count as editing for the plan).
 
+**What it suggests from.** Suggestions work on what is valid today, as the published current views do: a
+source that is only mapped from a later date is still suggested, a target code that only starts later isn't,
+and one that retires later still is.
+
 **AI similarity** uses Snowflake Cortex `AI_EMBED` with the model `snowflake-arctic-embed-l-v2.0`
 inside your account - no data leaves Snowflake, and there is no LLM prompt. If the app can't call
-`AI_EMBED` (Cortex model access restricted by role without the grants in step 5, model not available in
+`AI_EMBED` (Cortex model access restricted by role without the grants in [step 5](#5-optional-turn-on-ai-mapping-suggestions), model not available in
 your region and cross-region inference not allowed by
 `CORTEX_ENABLED_CROSS_REGION`, or a Snowflake trial account - Snowflake doesn't offer `AI_EMBED` on
 trial accounts), suggestions fall back to exact and alias matches and say why.
@@ -451,8 +462,8 @@ changed only with approval and audit: price lists, thresholds, product or custom
 control tables. Make them **managed tables**: Stewards' edits become change requests under the same
 rules as reference data, and approved changes are written to your table.
 
-**Set up (Admin).** On **Managed tables -> Set up**, choose **Add a table** (or use the SQL in step 4 of
-the configuration), then register it with a name, its **key columns** (one or more - together they must
+**Set up (Admin).** On **Managed tables -> Set up**, choose **Add a table** (or use the SQL in
+[step 4](#4-optional-manage-your-own-tables)), then register it with a name, its **key columns** (one or more - together they must
 identify every row) and its **editable columns**. Optionally name the columns the app fills when it writes a change
 (`created_by`, `created_at`, `updated_by`, `updated_at` - by = the Steward who proposed it), and allow
 Stewards to add or delete rows. Approval policy, named stewards and retirement work as for code sets,
@@ -503,7 +514,11 @@ shown in the session's time zone (the same instant), and a changed value keeps t
 with old and new values, who proposed and approved it, the reason and the ticket. **Revert** (or
 `core.revert_change`) undoes an applied change - deleting an added row, restoring changed values or
 re-adding a deleted row - provided the row hasn't changed since; the revert goes through approval like
-any change. Reverting an insert or delete works even if Stewards may not add or delete rows.
+any change. A deleted row comes back whole: every column as it was when it was deleted, including columns
+Lodestar doesn't manage and the original created_* stamps (updated_* record who undid it and when). Rows
+deleted before Lodestar 1.2.0 come back with their key and editable columns only, and a table with columns
+of a type Lodestar can't write (e.g. BINARY, GEOGRAPHY) can't have a row restored - use Time Travel. Undoing
+an added row is refused if any of its columns changed since, not only the ones Lodestar manages. Reverting an insert or delete works even if Stewards may not add or delete rows.
 
 **Security.** The app writes only approved changes, only to the registered key, editable and audit
 columns, and only to tables you added; it never reads or writes other tables. Anyone with the
@@ -644,10 +659,13 @@ SELECT c.customer_id, c.customer_name,
        cv.attributes:region::VARCHAR  AS region
 FROM my_db.my_schema.customer c
 LEFT JOIN <app>.core.mappings_current m
-       ON m.mapping_set = 'CRM_COUNTRY' AND m.source_code = c.nation_code
+       ON m.mapping_set = 'CRM_COUNTRY' AND m.source_code = TRIM(c.nation_code::VARCHAR)
 LEFT JOIN <app>.core.code_values_current cv
        ON cv.code_set = 'COUNTRY' AND cv.code = m.target_code;
 ```
+
+`TRIM(...::VARCHAR)` compares the source value as text without surrounding spaces - exactly as **Check a
+column** does - so a padded `'IE '` or a numeric key still finds its mapping. Case still matters.
 
 ### Pattern 3 - Check data quality
 
@@ -677,7 +695,8 @@ most rows first, with the reason:
 | Change waiting for approval | A change for it has been submitted and not yet approved |
 | Blank | Empty or NULL |
 
-Values are compared as text after trimming spaces, exactly as the joins compare them (`ie` is not `IE`).
+Values are compared as text after trimming spaces, as the `TRIM(...::VARCHAR)` joins above do (`ie` is not
+`IE`).
 The check reads the column once on the app's warehouse and changes nothing; the first 1,000 values that
 aren't OK are listed, and the counts cover all of them. On a mapping set, **Suggest** with the same table and
 column proposes targets for the values that aren't mapped. From SQL:
@@ -686,8 +705,8 @@ column proposes targets for the values that aren't mapped. From SQL:
 CALL <app>.core.check_values('MAPPING_SET', 'CRM_COUNTRY', 'MY_DB.MY_SCHEMA.CUSTOMER', 'NATION_CODE');
 ```
 
-To keep watching a column, an Admin schedules the check (step 11 of
-[Post-install configuration](#post-install-configuration)): it runs daily or weekly, and only values that
+To keep watching a column, an Admin schedules the check ([step 11](#11-optional-schedule-column-checks)): it
+runs daily or weekly, and only values that
 become problems are emailed. With more than 1,000 problem values, "new" is judged on the 1,000 with the
 most rows.
 
@@ -702,39 +721,76 @@ The shared data itself is only read.
 ### Taking an existing reference table under control
 
 If you already maintain a lookup table (e.g. `SALES_DB.REF.MARKET_SEGMENT`) that people edit
-directly, you can move it into the app without changing the queries that read it:
+directly, you can move it into the app without changing the queries that read it. Don't swap anything until
+the app holds exactly what the table holds - each step below has a check, and the old table stays until the
+end so you can go back:
 
 1. **Load the current rows** with Bulk Import: add the table as an import source (or paste it) and
    map its columns to the code, description, sort order and attributes - the names don't need to
-   match, and the mapping is remembered for the next load.
-2. **Put a view with the same name and columns in place of the table.** Keep the old table for rollback:
+   match, and the mapping is remembered for the next load. Use an effective date of today or earlier, and a
+   reason and ticket, e.g. *"Initial load from SALES_DB.REF.MARKET_SEGMENT"*, `CHG0001234`.
+2. **Wait until every imported change is applied.** An import creates change requests: with approval
+   required they wait for an Admin, and a row that fails validation is marked `FAILED`. Carry on only when
+   this returns one line, `APPROVED`:
+
+   ```sql
+   SELECT status, COUNT(*) FROM <app>.core.change_requests
+   WHERE container = 'MARKET_SEGMENT' AND change_reason = 'Initial load from SALES_DB.REF.MARKET_SEGMENT'
+   GROUP BY status;
+   ```
+
+3. **Reconcile both ways.** Both queries must return no rows - every row of the table is in the app, and the
+   app has nothing the table doesn't (compare the columns as the new view will present them):
+
+   ```sql
+   SELECT segment_code, segment_name, sort_order FROM SALES_DB.REF.MARKET_SEGMENT
+   EXCEPT
+   SELECT code, description, sort_order FROM <app>.core.code_values_current WHERE code_set = 'MARKET_SEGMENT';
+
+   SELECT code, description, sort_order FROM <app>.core.code_values_current WHERE code_set = 'MARKET_SEGMENT'
+   EXCEPT
+   SELECT segment_code, segment_name, sort_order FROM SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+4. **Build the view under a temporary name and test it as a reader.** Grants are not inherited from the old
+   table, so grant SELECT to every role from the `SHOW GRANTS` output; the role that owns the view needs
+   `viewer`. Then `USE ROLE <a_reader_role>` and query the view - it must return the same rows:
 
    ```sql
    SHOW GRANTS ON TABLE SALES_DB.REF.MARKET_SEGMENT;   -- note which roles read it
 
-   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_LEGACY;
-
-   CREATE VIEW SALES_DB.REF.MARKET_SEGMENT AS
+   CREATE VIEW SALES_DB.REF.MARKET_SEGMENT_NEW AS
    SELECT code        AS segment_code,   -- keep the original column names and order
           description AS segment_name,
           sort_order
    FROM <app>.core.code_values_current
    WHERE code_set = 'MARKET_SEGMENT';
 
-   GRANT SELECT ON VIEW SALES_DB.REF.MARKET_SEGMENT TO ROLE <each_reader_role>;
+   GRANT SELECT ON VIEW SALES_DB.REF.MARKET_SEGMENT_NEW TO ROLE <each_reader_role>;
    ```
 
-   Grants are not inherited from the old table, so re-grant SELECT to every role from the
-   `SHOW GRANTS` output. The role that owns the view needs `viewer`.
-3. **Close the back door.** Revoke write access to the legacy table, or drop it after a grace period.
+   Check what depends on the table first (streams, tasks, materialized views, dynamic tables - see
+   [When more work is needed](#when-more-work-is-needed)).
+5. **Swap them** - two renames, in quick succession; queries that name the table read the view from then on:
+
+   ```sql
+   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_LEGACY;
+   ALTER VIEW SALES_DB.REF.MARKET_SEGMENT_NEW RENAME TO SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+   **To go back**, rename them the other way round (the table kept its own grants):
+
+   ```sql
+   ALTER VIEW SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_NEW;
+   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT_LEGACY RENAME TO SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+6. **Close the back door.** Revoke write access to the legacy table, or drop it after a grace period.
    From then on changes can only come through the app, with approval, effective dating and audit:
 
    ```sql
    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE SALES_DB.REF.MARKET_SEGMENT_LEGACY FROM ROLE <writer_role>;
    ```
-
-It is worth recording the cut-over itself with a reason and ticket on the initial import, e.g.
-*"Initial load from SALES_DB.REF.MARKET_SEGMENT"*, `CHG0001234`.
 
 ### When more work is needed
 
@@ -743,7 +799,7 @@ work on your side. This is integration work that any reference data tool require
 
 | Situation | What to do |
 |---|---|
-| **Jobs or applications write to the table** (ETL loads, an admin screen, scripts) | Repoint them to the app: `core.submit_changes` for individual changes, `core.import_rows` or `core.import_from_source` for batches. They then go through the same approval rules. Until they are changed, step 3 will make them fail - so find them first, e.g. in `ACCOUNT_USAGE.ACCESS_HISTORY`. Or leave the table where it is and make it a [managed table](#managed-tables): people's edits go through approval while jobs keep writing. |
+| **Jobs or applications write to the table** (ETL loads, an admin screen, scripts) | Repoint them to the app: `core.submit_changes` for individual changes, `core.import_rows` or `core.import_from_source` for batches. They then go through the same approval rules. Until they are changed, step 6 will make them fail - so find them first, e.g. in `ACCOUNT_USAGE.ACCESS_HISTORY`. Or leave the table where it is and make it a [managed table](#managed-tables): people's edits go through approval while jobs keep writing. |
 | **Something needs a physical table** (a tool that cannot read views, clustering, Time Travel on the reference data itself) | Keep a table and refresh it from the app's view on a schedule, e.g. a task running `CREATE OR REPLACE TABLE ... AS SELECT ... FROM <app>.core.code_values_current WHERE code_set = '...'`. The app remains the place where changes are made; the table is a read-only copy. |
 | **Streams, tasks, materialized views or dynamic tables depend on the table** | Check each one before the swap. They may need to be recreated against the new view or the refreshed copy. |
 | **The table is not really reference data** (many-to-many relationships, wide transactional or fact-like tables, high-volume data) | Leave it where it is. The app is designed for code lists, mappings and hierarchies. |
@@ -801,13 +857,17 @@ SELECT * FROM <app>.core.hierarchy_current WHERE hierarchy = 'COUNTRY_REGION' OR
 | `core.managed_field_history` | steward | Applied changes to managed tables, one row per column: `row_key` (the key, or a JSON array for a composite key), `key_values`, `action` (`INSERT`, `UPDATE`, `DELETE`), `column_name`, `old_value` / `new_value` (text, or JSON for JSON columns), who proposed and approved it, when, the reason and ticket |
 | `core.audit_log` | admin | Full audit trail |
 | `core.active_editors` | admin | Editors in the last 30 days (user, actions, first / last action) - what your plan counts, see [Trial and plan](#trial-and-plan) |
-| `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see step 10 of [Post-install configuration](#post-install-configuration) |
-| `core.check_schedules` | steward | Scheduled checks (step 11): `check_id`, the set (`target_type`, `target_name`), `source` and `column_name`, `frequency` (`DAILY`, `WEEKLY`) and `weekday`, who scheduled it, and its latest run: `last_run_at`, `last_status` (`OK`, `PROBLEMS`, `ERROR`), `last_run_type`, values and rows checked, % OK, `problem_values`, `new_problem_count`, `notified` (people emailed) and `error` |
+| `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see [step 10](#10-optional-email-approvers-and-requesters) |
+| `core.check_schedules` | steward | Scheduled checks ([step 11](#11-optional-schedule-column-checks)): `check_id`, the set (`target_type`, `target_name`), `source` and `column_name`, `frequency` (`DAILY`, `WEEKLY`) and `weekday`, who scheduled it, and its latest run: `last_run_at`, `last_status` (`OK`, `PROBLEMS`, `ERROR`), `last_run_type`, values and rows checked, % OK, `problem_values`, `new_problem_count`, `notified` (people emailed) and `error` |
 | `core.check_runs` | steward | Every run of a scheduled check (400 days): `run_type` (`BASELINE` when scheduled, `MANUAL` = Run now, `SCHEDULE`), `run_by`, `status`, counts and % OK, `new_problem_count` and `new_problems` (up to 100 `{value, rows, status}`), `notified`, `error` |
 
 ### Stored procedures
 
-All procedures return a JSON object `{"ok": true|false, ...}`; on failure `error` holds the reason.
+Every procedure returns a JSON object `{"ok": true|false, ...}` - on failure `error` holds the reason -
+except `core.managed_rows`, which returns the rows themselves (a problem comes back as one row with a
+`_LODESTAR_ERROR` column). A refused call changes nothing. Approving the same change twice is safe: a
+second reviewer (or a second click) finds it already decided and is told so (`skipped`, with "already
+decided by someone else").
 The procedures that submit, review, revert or import changes (and `define_attribute`,
 `seed_starter_data`, `plan_usage`) also include `_perf` (`ms` spent inside the procedure and `sql`
 statements run), which helps when diagnosing slow calls.
@@ -854,7 +914,7 @@ date or an unknown code) is marked `FAILED` with the reason, and the others are 
 | `core.check_ai()` | admin | Whether the app can call Cortex `AI_EMBED` (one embedding of a few tokens): `available`, `enabled` (the `ai_suggestions_enabled` setting), `model`, `region`; when not available, Snowflake's `error` and the GRANT that usually fixes it (`fix`) - or, on a Snowflake trial account, `trial` = true and no `fix` (Snowflake doesn't offer AI functions on trials) |
 | `core.set_approval_policy(container_type, name, policy)` | admin | `policy`: `DEFAULT`, `REQUIRED` or `NOT_REQUIRED` |
 | `core.set_stewards(container_type, name, stewards)` | admin | Array of Snowflake user names allowed to change it; empty array = any Steward |
-| `core.define_attribute(code_set, attr_name, label, data_type, is_required, max_length, allowed_values, ref_code_set, sort_order)` | admin | Create or update a typed attribute. `data_type`: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `REFERENCE` |
+| `core.define_attribute(code_set, attr_name, label, data_type, is_required, max_length, allowed_values, ref_code_set, sort_order, scale DEFAULT NULL)` | admin | Create or update a typed attribute. `data_type`: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `REFERENCE`. `scale` (NUMBER only, 0-37): the most decimal places a value may have; **Use in SQL** then reads it as `NUMBER(38, scale)` |
 | `core.set_attribute_status(code_set, attr_name, status)` | admin | Retire or reactivate an attribute definition |
 | `core.managed_sources()` | admin | Tables added to the `managed_tables` reference: `source` (DATABASE.SCHEMA.NAME), `alias`, the name it is registered under (`table_name`, NULL if not yet) and its `columns` (name, type, nullable, has_default, supported) |
 | `core.register_managed_table(table_name, source, key_columns, editable_columns, audit_columns, allow_insert, allow_delete, description)` | admin | Register or update a managed table: key and editable columns (arrays of column names, any case), `audit_columns` `PARSE_JSON('{"updated_by": "<column>", ...}')` (keys `created_by`, `created_at`, `updated_by`, `updated_at`; `{}` for none), whether Stewards may add / delete rows. The key columns can't change while the table has pending changes |
@@ -899,20 +959,29 @@ Payload fields: CODE_VALUE `description`, `sort_order`, `attributes`; MAPPING `s
 
 The app shares **error and warning logs** with the provider (mandatory) so we can detect and fix
 failures. Snowflake adds your organisation and account name, account locator, region and the app
-version to each event. A message names the procedure and the problem; a rejected change usually names
-what it was about - the code set, mapping set, hierarchy or managed table, the code or row key, the
-attribute or column, and sometimes the value that was refused or the allowed values (for example
-"currency: GBP is not a valid CURRENCY code"). An unexpected error includes Snowflake's error message,
-which can quote a value involved, and a stack trace of the app's code. The app never logs whole rows,
-pasted rows or uploaded files, comments, email addresses, or your users' names (a message that names stewards in the
-console is logged with only their number). If your codes or row keys are themselves personal data (for
-example employee numbers), they can appear in these messages. **INFO usage logs** are optional and off
-by default: per call, the time taken and the number of statements, and per review the number of changes
-approved, rejected, failed and skipped. Event sharing
+version to each event. Since 1.2.0 the messages carry only fixed text, counts, the app's own ids, the
+procedure's name, the type of an error and Snowflake's numeric error code (e.g. `submit_changes failed:
+ProgrammingError 002003 (02000)`) - never an error's text, which can quote a value, and never your codes,
+row keys, values, set or column names, comments, email addresses or your users' names. A refused change
+is logged only as refused (the person who made it sees why). The full error is shown to the person who made
+the call and kept in the app's tables in your account (a failed change's `apply_error`, a check's
+`error`). **INFO usage logs** are optional and off by default: per call, the time taken and the number of
+statements, and per review the number of changes approved, rejected, failed and skipped. Event sharing
 requires an active event table in your account.
 The app doesn't request traces or agent telemetry, so questions asked of its Cortex Agent or MCP server
 and their answers stay in your account. Privacy notice:
 https://www.lodestardataservices.com/privacy/
+
+## What leaves your account
+
+| Where | What | Who sees it |
+|---|---|---|
+| The app's tables, in your account | Code sets, mappings, hierarchies, their history, change requests, comments, the audit trail, check results, settings | Your users, through the app's roles |
+| Your managed tables | Approved changes are written to them | Whoever you grant access to them |
+| Error and warning logs, shared with us | Fixed messages, counts, procedure names, error types and Snowflake's error codes, plus your organisation, account and app version (see [Telemetry](#telemetry)) | Us (the provider) |
+| Emails (optional, sent by Snowflake) | Set names, counts, statuses, the reviewer's comment and who acted | The verified users in your account they go to |
+| AI mapping suggestions (optional) | Codes and descriptions, embedded by Snowflake Cortex `AI_EMBED` in your account - or in another Snowflake region if your account allows cross-region inference (`CORTEX_ENABLED_CROSS_REGION`) | Snowflake; nothing reaches us |
+| The Cortex Agent and MCP server (if you use them) | Answers built from the reference data the asking user may read | That user, in Snowflake CoWork or the MCP client they connect (e.g. Claude, Cursor) - the client's own terms then apply |
 
 ## Trial and plan
 
@@ -965,6 +1034,14 @@ management -> Budgets).
 `DROP APPLICATION <app> CASCADE;` removes the app, all of its data and the account-level objects
 it owns (its warehouse). Export anything you need first, e.g.
 `CREATE TABLE my_db.my_schema.lds_codes AS SELECT * FROM <app>.core.code_values_history;`
+Your managed tables are yours and stay as they are.
+
+**Retention and backup.** Everything the app keeps is in your account, and we hold no copy, so we can't
+restore it. Versions, change requests, comments and the audit trail are kept for as long as the app is
+installed; scheduled-check runs for 400 days (unscheduling a check deletes its runs). Your backup is a
+copy of the published views on a schedule that matches your recovery-point objective - e.g. a task running
+the `CREATE TABLE ... AS SELECT` above for `code_values_history`, `mappings_history`, `hierarchy_edges_history`
+and `audit_log`; Snowflake's own durability covers the rest.
 
 ## Support
 

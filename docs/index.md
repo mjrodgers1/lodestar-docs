@@ -15,8 +15,9 @@ business and data teams to maintain the data everything else depends on - custom
 and cost-centre codes, financial hierarchies, country and currency codes, cross-system mappings, and
 your own control tables such as price lists and thresholds. Business users work in a familiar grid;
 every change gets maker/checker approval, effective dating and a complete audit trail, and is live in
-your queries as soon as it is approved (or on its effective date). Your data stays in your account; only
-error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#telemetry)).
+your queries as soon as it is approved (or on its effective date). Your data stays in your account: the logs
+that reach us carry fixed messages, counts and Snowflake's error codes - never your codes, rows or values -
+and the AI features run on Snowflake Cortex (see [What leaves your account](/docs/plan-cost-support/#what-leaves-your-account)).
 
 ## In this documentation {#in-this-documentation}
 
@@ -27,7 +28,7 @@ error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#teleme
 - [AI agents and MCP](/docs/ai-and-mcp/) - The Cortex Agent, the MCP server, the semantic view and the lookup functions.
 - [Working with your existing tables](/docs/existing-tables/) - Lookups, translations, data-quality checks and taking existing tables under control.
 - [SQL reference](/docs/sql-reference/) - The published views and functions, and every stored procedure.
-- [Plan, cost and support](/docs/plan-cost-support/) - Telemetry, the trial and plan, running cost, uninstalling and support.
+- [Plan, cost and support](/docs/plan-cost-support/) - Telemetry, what leaves your account, the trial and plan, running cost, uninstalling and support.
 
 ## Features {#features}
 
@@ -35,7 +36,9 @@ error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#teleme
 - **Typed attributes**: Admins define attributes per code set (text, number, true/false, date, or a
   reference to another code set, with required / max length / allowed values). They appear as typed
   columns in the editor and are validated on submit and on approval. Code sets without definitions
-  accept free-form JSON attributes.
+  accept free-form JSON attributes. Numbers are kept exactly: whole numbers of up to 38 digits, numbers with
+  decimals of up to 15 significant digits, at most the attribute's decimal places if an Admin sets them -
+  anything else is refused, never rounded.
 - **Effective dating**: every change has an effective date; full version history is kept and any
   point in time can be queried. Same-day edits correct the current version instead of versioning it.
 - **Mappings**: crosswalks from source-system codes to a governed code set, validated against the target.
@@ -44,14 +47,17 @@ error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#teleme
   same code or description, a matching attribute (e.g. ISO3 `IRL` -> `IE`) and - once an Admin turns it
   on - AI similarity with Snowflake Cortex (`Deutschland` -> `DE`). Stewards accept or correct them;
   accepted ones go through the normal approval rules.
-- **Hierarchies**: parent/child trees over a code set, with cycle detection.
+- **Hierarchies**: parent/child trees over a code set. A change that would make a loop is refused - on its
+  effective date and on every later date an approved change takes effect.
 - **Check a column**: point Lodestar at a column of one of your tables or views and see which of its values
   aren't codes of a code set, or aren't mapped by a mapping set, today - and why: missing, valid only from
   a later date, no longer valid, waiting for approval, or blank - with the number of rows each affects.
   Changes nothing.
 - **Scheduled checks**: an Admin saves a Check a column to run daily or weekly. The app runs it on its own
-  warehouse, keeps every result, and emails the values that became problems since the run before (when
-  email notifications are on) to whoever scheduled it and the set's named stewards. See step 11 below.
+  warehouse, keeps each run's result for 400 days, and emails the values that became problems since the run
+  before (when email notifications are on) to whoever scheduled it and the set's named stewards. Unscheduling
+  a check deletes its results - export them first if you need them. See
+  [step 11](/docs/getting-started/#11-optional-schedule-column-checks).
 - **Maker/checker workflow**: Stewards propose changes, Admins approve or reject them. Self-approval
   is blocked by default (a requester can still reject - i.e. withdraw - their own request). Approval
   can be required or waived per code set, mapping set or hierarchy.
@@ -59,13 +65,14 @@ error and warning logs reach us (see [Telemetry](/docs/plan-cost-support/#teleme
 - **Change reasons and tickets**: every submission can carry a reason and a ticket reference (e.g. Jira,
   ServiceNow). Approvers see both, and both stay with the resulting versions in the history. Admins can
   make the reason mandatory.
-- **Revert**: undo an applied change in one click; the undo goes through the same approval rules.
+- **Revert**: undo an applied change in one click; the undo goes through the same approval rules. Undoing
+  a deleted managed-table row puts the whole row back.
 - **My work**: Stewards and Admins land on their own work queue - submissions waiting for their review,
   their own open submissions, and decisions on their changes in the last 14 days (with the reviewer's
   comment, e.g. why a change was rejected). The sidebar shows how many need them.
 - **Email notifications** (optional): Admins are emailed when changes wait for their approval, and
   requesters when their changes are approved or rejected - sent by Snowflake, only to verified emails of
-  users in your account. See step 10 below.
+  users in your account. See [step 10](/docs/getting-started/#10-optional-email-approvers-and-requesters).
 - **Comments**: discuss any change request or whole submission. Comments are kept with the request,
   audited, and never edited or deleted (add another to correct one).
 - **Bulk import**: paste rows copied from Excel, upload a CSV or Excel (.xlsx) file, or load from any

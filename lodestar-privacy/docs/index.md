@@ -16,8 +16,9 @@ holds and evidence. Lodestar Privacy is one controlled place to erase a person f
 their data: an officer records the request, a second officer approves it after seeing what it will touch,
 the app deletes or anonymises the matching rows, and every request ends with a report of what was erased,
 when, by which Snowflake query, and until when it could still be recovered. Your data stays in your account;
-only error and warning logs reach us, and they never contain a person's identifiers (see
-[Telemetry](/lodestar-privacy/docs/plan-cost-support/#telemetry)).
+only error and warning logs reach us, and they carry fixed messages, counts and Snowflake's error codes - never
+an error's text, so never a person's identifiers or a value from your tables (see [Telemetry](/lodestar-privacy/docs/plan-cost-support/#telemetry) and
+[What leaves your account](/lodestar-privacy/docs/operations/#what-leaves-your-account)).
 
 Part of the Lodestar suite, with Lodestar Data Services.
 
@@ -26,6 +27,7 @@ Part of the Lodestar suite, with Lodestar Data Services.
 - [Install and set up](/lodestar-privacy/docs/getting-started/) - The privileges and the table reference the app asks for, the 10-minute start and post-install configuration.
 - [Using the app](/lodestar-privacy/docs/using-the-app/) - The consoles, how a person is matched and erased, the evidence, and sizing and limits.
 - [SQL reference](/lodestar-privacy/docs/sql-reference/) - The published views and every stored procedure.
+- [Operations and data flows](/lodestar-privacy/docs/operations/) - What leaves your account, and how to check the app works, recover a stopped run, upgrade and uninstall.
 - [Plan, cost and support](/lodestar-privacy/docs/plan-cost-support/) - Telemetry, the trial and plan, running cost, uninstalling and support.
 
 ## Features {#features}
@@ -36,17 +38,25 @@ Part of the Lodestar suite, with Lodestar Data Services.
   must keep for accounting.
 - **Requests**: an officer enters the case reference, the date it was received and the person's identifiers -
   in the console, by uploading a CSV or Excel file of many requests, or from SQL (so your DSAR tool can feed
-  it). The due date defaults to one month after receipt.
+  it). The due date defaults to one calendar month after receipt - the same date next month, or that month's
+  last day (31 January -> 28 or 29 February); an Admin can set a fixed number of days instead.
 - **Preview**: as soon as a request is submitted the app counts the rows each table holds about the person.
   Counts only - no row is shown.
 - **Maker/checker approval**: another officer approves or rejects every request after seeing its identifiers
   and the counts. Self-approval is off by default.
+- **An approval covers what runs**: if an Admin changes a table's source, identifying columns or action after
+  a request was approved - or registers a new table - nothing runs on that table for the request until an
+  officer approves it again (Approvals -> *Tables to approve again*). The evidence records the table, action
+  and definition each erasure actually ran against.
 - **Legal holds**: stop erasure of one person, one table or everything - for litigation, a regulator's
   investigation or a retention duty - until the hold is released. What a hold covers waits and runs when it
-  is released.
+  is released. A hold on a person is checked against the rows themselves, including the other identifiers
+  found on that person's rows: a request that names them by their customer id still stops when the hold gives
+  their email.
 - **Carried out for you**: approved requests run every night on the app's own warehouse (or straight away
-  with **Run now**). Each table is erased in one transaction that counts each request's rows, runs one
-  DELETE or UPDATE, checks it changed exactly those rows and records the evidence - or changes nothing.
+  with **Run now**), one run at a time. Each table is erased in one transaction that counts each request's rows
+  (one scan of the table for all of them), runs one DELETE or UPDATE, checks it changed exactly those rows and
+  records the evidence and the audit trail - or changes nothing.
 - **Evidence**: per request and table: the action, the rows affected, the time, the Snowflake query id, and
   the dates until which Time Travel and Fail-safe could still recover the rows. Download it as a PDF, CSV or
   JSON report, or query it in SQL.

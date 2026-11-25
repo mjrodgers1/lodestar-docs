@@ -30,9 +30,13 @@ ones to accept (exact and alias matches, and AI ones above an adjustable score, 
 can pick another target, and submits them as ordinary mapping changes - approval, stewards, reasons and
 history apply as usual. Each run is audited as `SUGGEST_MAPPINGS` (it doesn't count as editing for the plan).
 
+**What it suggests from.** Suggestions work on what is valid today, as the published current views do: a
+source that is only mapped from a later date is still suggested, a target code that only starts later isn't,
+and one that retires later still is.
+
 **AI similarity** uses Snowflake Cortex `AI_EMBED` with the model `snowflake-arctic-embed-l-v2.0`
 inside your account - no data leaves Snowflake, and there is no LLM prompt. If the app can't call
-`AI_EMBED` (Cortex model access restricted by role without the grants in step 5, model not available in
+`AI_EMBED` (Cortex model access restricted by role without the grants in [step 5](/docs/getting-started/#5-optional-turn-on-ai-mapping-suggestions), model not available in
 your region and cross-region inference not allowed by
 `CORTEX_ENABLED_CROSS_REGION`, or a Snowflake trial account - Snowflake doesn't offer `AI_EMBED` on
 trial accounts), suggestions fall back to exact and alias matches and say why.

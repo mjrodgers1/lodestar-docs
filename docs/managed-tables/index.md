@@ -18,8 +18,8 @@ changed only with approval and audit: price lists, thresholds, product or custom
 control tables. Make them **managed tables**: Stewards' edits become change requests under the same
 rules as reference data, and approved changes are written to your table.
 
-**Set up (Admin).** On **Managed tables -> Set up**, choose **Add a table** (or use the SQL in step 4 of
-the configuration), then register it with a name, its **key columns** (one or more - together they must
+**Set up (Admin).** On **Managed tables -> Set up**, choose **Add a table** (or use the SQL in
+[step 4](/docs/getting-started/#4-optional-manage-your-own-tables)), then register it with a name, its **key columns** (one or more - together they must
 identify every row) and its **editable columns**. Optionally name the columns the app fills when it writes a change
 (`created_by`, `created_at`, `updated_by`, `updated_at` - by = the Steward who proposed it), and allow
 Stewards to add or delete rows. Approval policy, named stewards and retirement work as for code sets,
@@ -70,7 +70,11 @@ shown in the session's time zone (the same instant), and a changed value keeps t
 with old and new values, who proposed and approved it, the reason and the ticket. **Revert** (or
 `core.revert_change`) undoes an applied change - deleting an added row, restoring changed values or
 re-adding a deleted row - provided the row hasn't changed since; the revert goes through approval like
-any change. Reverting an insert or delete works even if Stewards may not add or delete rows.
+any change. A deleted row comes back whole: every column as it was when it was deleted, including columns
+Lodestar doesn't manage and the original created_* stamps (updated_* record who undid it and when). Rows
+deleted before Lodestar 1.2.0 come back with their key and editable columns only, and a table with columns
+of a type Lodestar can't write (e.g. BINARY, GEOGRAPHY) can't have a row restored - use Time Travel. Undoing
+an added row is refused if any of its columns changed since, not only the ones Lodestar manages. Reverting an insert or delete works even if Stewards may not add or delete rows.
 
 **Security.** The app writes only approved changes, only to the registered key, editable and audit
 columns, and only to tables you added; it never reads or writes other tables. Anyone with the

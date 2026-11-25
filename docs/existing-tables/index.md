@@ -36,10 +36,13 @@ SELECT c.customer_id, c.customer_name,
        cv.attributes:region::VARCHAR  AS region
 FROM my_db.my_schema.customer c
 LEFT JOIN <app>.core.mappings_current m
-       ON m.mapping_set = 'CRM_COUNTRY' AND m.source_code = c.nation_code
+       ON m.mapping_set = 'CRM_COUNTRY' AND m.source_code = TRIM(c.nation_code::VARCHAR)
 LEFT JOIN <app>.core.code_values_current cv
        ON cv.code_set = 'COUNTRY' AND cv.code = m.target_code;
 ```
+
+`TRIM(...::VARCHAR)` compares the source value as text without surrounding spaces - exactly as **Check a
+column** does - so a padded `'IE '` or a numeric key still finds its mapping. Case still matters.
 
 ### Pattern 3 - Check data quality {#pattern-3---check-data-quality}
 
@@ -69,7 +72,8 @@ most rows first, with the reason:
 | Change waiting for approval | A change for it has been submitted and not yet approved |
 | Blank | Empty or NULL |
 
-Values are compared as text after trimming spaces, exactly as the joins compare them (`ie` is not `IE`).
+Values are compared as text after trimming spaces, as the `TRIM(...::VARCHAR)` joins above do (`ie` is not
+`IE`).
 The check reads the column once on the app's warehouse and changes nothing; the first 1,000 values that
 aren't OK are listed, and the counts cover all of them. On a mapping set, **Suggest** with the same table and
 column proposes targets for the values that aren't mapped. From SQL:
@@ -78,8 +82,8 @@ column proposes targets for the values that aren't mapped. From SQL:
 CALL <app>.core.check_values('MAPPING_SET', 'CRM_COUNTRY', 'MY_DB.MY_SCHEMA.CUSTOMER', 'NATION_CODE');
 ```
 
-To keep watching a column, an Admin schedules the check (step 11 of
-[Post-install configuration](/docs/getting-started/#post-install-configuration)): it runs daily or weekly, and only values that
+To keep watching a column, an Admin schedules the check ([step 11](/docs/getting-started/#11-optional-schedule-column-checks)): it
+runs daily or weekly, and only values that
 become problems are emailed. With more than 1,000 problem values, "new" is judged on the 1,000 with the
 most rows.
 
@@ -94,39 +98,76 @@ The shared data itself is only read.
 ### Taking an existing reference table under control {#taking-an-existing-reference-table-under-control}
 
 If you already maintain a lookup table (e.g. `SALES_DB.REF.MARKET_SEGMENT`) that people edit
-directly, you can move it into the app without changing the queries that read it:
+directly, you can move it into the app without changing the queries that read it. Don't swap anything until
+the app holds exactly what the table holds - each step below has a check, and the old table stays until the
+end so you can go back:
 
 1. **Load the current rows** with Bulk Import: add the table as an import source (or paste it) and
    map its columns to the code, description, sort order and attributes - the names don't need to
-   match, and the mapping is remembered for the next load.
-2. **Put a view with the same name and columns in place of the table.** Keep the old table for rollback:
+   match, and the mapping is remembered for the next load. Use an effective date of today or earlier, and a
+   reason and ticket, e.g. *"Initial load from SALES_DB.REF.MARKET_SEGMENT"*, `CHG0001234`.
+2. **Wait until every imported change is applied.** An import creates change requests: with approval
+   required they wait for an Admin, and a row that fails validation is marked `FAILED`. Carry on only when
+   this returns one line, `APPROVED`:
+
+   ```sql
+   SELECT status, COUNT(*) FROM <app>.core.change_requests
+   WHERE container = 'MARKET_SEGMENT' AND change_reason = 'Initial load from SALES_DB.REF.MARKET_SEGMENT'
+   GROUP BY status;
+   ```
+
+3. **Reconcile both ways.** Both queries must return no rows - every row of the table is in the app, and the
+   app has nothing the table doesn't (compare the columns as the new view will present them):
+
+   ```sql
+   SELECT segment_code, segment_name, sort_order FROM SALES_DB.REF.MARKET_SEGMENT
+   EXCEPT
+   SELECT code, description, sort_order FROM <app>.core.code_values_current WHERE code_set = 'MARKET_SEGMENT';
+
+   SELECT code, description, sort_order FROM <app>.core.code_values_current WHERE code_set = 'MARKET_SEGMENT'
+   EXCEPT
+   SELECT segment_code, segment_name, sort_order FROM SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+4. **Build the view under a temporary name and test it as a reader.** Grants are not inherited from the old
+   table, so grant SELECT to every role from the `SHOW GRANTS` output; the role that owns the view needs
+   `viewer`. Then `USE ROLE <a_reader_role>` and query the view - it must return the same rows:
 
    ```sql
    SHOW GRANTS ON TABLE SALES_DB.REF.MARKET_SEGMENT;   -- note which roles read it
 
-   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_LEGACY;
-
-   CREATE VIEW SALES_DB.REF.MARKET_SEGMENT AS
+   CREATE VIEW SALES_DB.REF.MARKET_SEGMENT_NEW AS
    SELECT code        AS segment_code,   -- keep the original column names and order
           description AS segment_name,
           sort_order
    FROM <app>.core.code_values_current
    WHERE code_set = 'MARKET_SEGMENT';
 
-   GRANT SELECT ON VIEW SALES_DB.REF.MARKET_SEGMENT TO ROLE <each_reader_role>;
+   GRANT SELECT ON VIEW SALES_DB.REF.MARKET_SEGMENT_NEW TO ROLE <each_reader_role>;
    ```
 
-   Grants are not inherited from the old table, so re-grant SELECT to every role from the
-   `SHOW GRANTS` output. The role that owns the view needs `viewer`.
-3. **Close the back door.** Revoke write access to the legacy table, or drop it after a grace period.
+   Check what depends on the table first (streams, tasks, materialized views, dynamic tables - see
+   [When more work is needed](#when-more-work-is-needed)).
+5. **Swap them** - two renames, in quick succession; queries that name the table read the view from then on:
+
+   ```sql
+   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_LEGACY;
+   ALTER VIEW SALES_DB.REF.MARKET_SEGMENT_NEW RENAME TO SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+   **To go back**, rename them the other way round (the table kept its own grants):
+
+   ```sql
+   ALTER VIEW SALES_DB.REF.MARKET_SEGMENT RENAME TO SALES_DB.REF.MARKET_SEGMENT_NEW;
+   ALTER TABLE SALES_DB.REF.MARKET_SEGMENT_LEGACY RENAME TO SALES_DB.REF.MARKET_SEGMENT;
+   ```
+
+6. **Close the back door.** Revoke write access to the legacy table, or drop it after a grace period.
    From then on changes can only come through the app, with approval, effective dating and audit:
 
    ```sql
    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE SALES_DB.REF.MARKET_SEGMENT_LEGACY FROM ROLE <writer_role>;
    ```
-
-It is worth recording the cut-over itself with a reason and ticket on the initial import, e.g.
-*"Initial load from SALES_DB.REF.MARKET_SEGMENT"*, `CHG0001234`.
 
 ### When more work is needed {#when-more-work-is-needed}
 
@@ -135,7 +176,7 @@ work on your side. This is integration work that any reference data tool require
 
 | Situation | What to do |
 |---|---|
-| **Jobs or applications write to the table** (ETL loads, an admin screen, scripts) | Repoint them to the app: `core.submit_changes` for individual changes, `core.import_rows` or `core.import_from_source` for batches. They then go through the same approval rules. Until they are changed, step 3 will make them fail - so find them first, e.g. in `ACCOUNT_USAGE.ACCESS_HISTORY`. Or leave the table where it is and make it a [managed table](/docs/managed-tables/#managed-tables): people's edits go through approval while jobs keep writing. |
+| **Jobs or applications write to the table** (ETL loads, an admin screen, scripts) | Repoint them to the app: `core.submit_changes` for individual changes, `core.import_rows` or `core.import_from_source` for batches. They then go through the same approval rules. Until they are changed, step 6 will make them fail - so find them first, e.g. in `ACCOUNT_USAGE.ACCESS_HISTORY`. Or leave the table where it is and make it a [managed table](/docs/managed-tables/#managed-tables): people's edits go through approval while jobs keep writing. |
 | **Something needs a physical table** (a tool that cannot read views, clustering, Time Travel on the reference data itself) | Keep a table and refresh it from the app's view on a schedule, e.g. a task running `CREATE OR REPLACE TABLE ... AS SELECT ... FROM <app>.core.code_values_current WHERE code_set = '...'`. The app remains the place where changes are made; the table is a read-only copy. |
 | **Streams, tasks, materialized views or dynamic tables depend on the table** | Check each one before the swap. They may need to be recreated against the new view or the refreshed copy. |
 | **The table is not really reference data** (many-to-many relationships, wide transactional or fact-like tables, high-volume data) | Leave it where it is. The app is designed for code lists, mappings and hierarchies. |

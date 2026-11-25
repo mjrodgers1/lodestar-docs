@@ -17,8 +17,8 @@ next_title: "Using the app"
 | Privilege | Why |
 |---|---|
 | `CREATE WAREHOUSE` | The app creates one X-Small warehouse named `<APP_NAME>_WH` (standard Gen1, query acceleration off, auto-suspend 60 s, initially suspended). The app's consoles and the procedures they call run on it, so this compute is isolated from your workloads and its cost is attributable to the app (see Cost). Roles with `viewer` get USAGE on it because the agent's and MCP server's tools run there with the caller's rights (see [AI agents and MCP](/docs/ai-and-mcp/#ai-agents-and-mcp)); those roles can also run their own queries on it. |
-| `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see step 2 below. Calls you make from SQL always record your own user, either way. |
-| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due (step 11). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
+| `READ SESSION` | Recommended. Lets Snowflake tell the app who is signed in when someone uses its consoles, so changes, approvals and audit entries are recorded against that person by Snowflake itself. Without it the console passes the signed-in user's name to the app. Snowflake does not grant it at install: see [step 2](#2-recommended-let-snowflake-identify-console-users). Calls you make from SQL always record your own user, either way. |
+| `EXECUTE TASK` | New in 1.1.0. Lets the app run its one task, `jobs.run_checks`, on its own warehouse: once a day it runs the scheduled checks that are due ([step 11](#11-optional-schedule-column-checks)). The task is suspended while nothing is scheduled, so it costs nothing until an Admin schedules a check. Snowflake grants this privilege automatically at install, and on the upgrade to 1.1.0 for existing installs. |
 
 Optional references (each can hold as many objects as you like):
 
@@ -35,13 +35,13 @@ Optional database role in the SNOWFLAKE database:
 
 | Role | Why |
 |---|---|
-| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions, and only if **Test AI access** asks for it: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see step 5 below. Without AI access, suggestions use exact and alias matches only. |
+| `SNOWFLAKE.CORTEX_EMBED_USER` | Only for AI mapping suggestions, and only if **Test AI access** asks for it: lets the app call Cortex `AI_EMBED` (embeddings only - no other AI functions or models). Not granted at install; see [step 5](#5-optional-turn-on-ai-mapping-suggestions). Without AI access, suggestions use exact and alias matches only. |
 
 ## Get started in 5 minutes {#get-started-in-5-minutes}
 
 1. **Grant roles** (SQL below): `admin` to yourself, `steward` to whoever proposes changes,
    `viewer` to readers. Approvals need two people: one proposes, another approves. Also grant the
-   app `READ SESSION` (step 2) so Snowflake identifies console users.
+   app `READ SESSION` ([step 2](#2-recommended-let-snowflake-identify-console-users)) so Snowflake identifies console users.
 2. **Open the Admin console** (Snowsight -> Catalog -> Apps -> the app -> *Lodestar - Admin*).
    Its Home page shows a **set-up checklist** that ticks itself off as you go.
 3. **Create a code set** (Code Sets) or try the COUNTRY / CURRENCY samples.
@@ -177,7 +177,7 @@ ALTER USER <user_name> SET ALLOWED_INTERFACES = (STREAMLIT);
 ```
 
 From a direct link, Snowflake cannot show permission dialogs, so adding import sources or managed
-tables (steps 3 and 4) and granting READ SESSION (step 2) must be done in Snowsight or with the SQL above.
+tables (steps 3 and 4) and granting READ SESSION ([step 2](#2-recommended-let-snowflake-identify-console-users)) must be done in Snowsight or with the SQL above.
 
 ### 9. (Optional) Choose when upgrades happen {#9-optional-choose-when-upgrades-happen}
 
@@ -233,7 +233,7 @@ the day). From then on:
 - Once a day, at the time set in **Audit & Settings -> Settings -> Scheduled checks** (default 06:00 UTC; any
   time zone), the app's task runs the checks that are due, on the app's warehouse.
 - Each run is kept (`core.check_runs`, 400 days) and compared with the one before. Values that became
-  problems since then are emailed - when email notifications are on (step 10) - to whoever scheduled the
+  problems since then are emailed - when email notifications are on ([step 10](#10-optional-email-approvers-and-requesters)) - to whoever scheduled the
   check and the code set's or mapping set's named stewards, if their email is recorded. The email lists up
   to 20 of the new values with their rows and reason. A check that starts failing (for example because its
   table was removed from the app) emails the error once.

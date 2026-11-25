@@ -65,13 +65,17 @@ SELECT * FROM <app>.core.hierarchy_current WHERE hierarchy = 'COUNTRY_REGION' OR
 | `core.managed_field_history` | steward | Applied changes to managed tables, one row per column: `row_key` (the key, or a JSON array for a composite key), `key_values`, `action` (`INSERT`, `UPDATE`, `DELETE`), `column_name`, `old_value` / `new_value` (text, or JSON for JSON columns), who proposed and approved it, when, the reason and ticket |
 | `core.audit_log` | admin | Full audit trail |
 | `core.active_editors` | admin | Editors in the last 30 days (user, actions, first / last action) - what your plan counts, see [Trial and plan](/docs/plan-cost-support/#trial-and-plan) |
-| `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see step 10 of [Post-install configuration](/docs/getting-started/#post-install-configuration) |
-| `core.check_schedules` | steward | Scheduled checks (step 11): `check_id`, the set (`target_type`, `target_name`), `source` and `column_name`, `frequency` (`DAILY`, `WEEKLY`) and `weekday`, who scheduled it, and its latest run: `last_run_at`, `last_status` (`OK`, `PROBLEMS`, `ERROR`), `last_run_type`, values and rows checked, % OK, `problem_values`, `new_problem_count`, `notified` (people emailed) and `error` |
+| `core.email_contacts` | admin | People recorded for email notifications: `user_name`, `email`, `last_seen`, and `gets_approval_requests` (opened the Admin console in the last 90 days). Empty while notifications are off - see [step 10](/docs/getting-started/#10-optional-email-approvers-and-requesters) |
+| `core.check_schedules` | steward | Scheduled checks ([step 11](/docs/getting-started/#11-optional-schedule-column-checks)): `check_id`, the set (`target_type`, `target_name`), `source` and `column_name`, `frequency` (`DAILY`, `WEEKLY`) and `weekday`, who scheduled it, and its latest run: `last_run_at`, `last_status` (`OK`, `PROBLEMS`, `ERROR`), `last_run_type`, values and rows checked, % OK, `problem_values`, `new_problem_count`, `notified` (people emailed) and `error` |
 | `core.check_runs` | steward | Every run of a scheduled check (400 days): `run_type` (`BASELINE` when scheduled, `MANUAL` = Run now, `SCHEDULE`), `run_by`, `status`, counts and % OK, `new_problem_count` and `new_problems` (up to 100 `{value, rows, status}`), `notified`, `error` |
 
 ### Stored procedures {#stored-procedures}
 
-All procedures return a JSON object `{"ok": true|false, ...}`; on failure `error` holds the reason.
+Every procedure returns a JSON object `{"ok": true|false, ...}` - on failure `error` holds the reason -
+except `core.managed_rows`, which returns the rows themselves (a problem comes back as one row with a
+`_LODESTAR_ERROR` column). A refused call changes nothing. Approving the same change twice is safe: a
+second reviewer (or a second click) finds it already decided and is told so (`skipped`, with "already
+decided by someone else").
 The procedures that submit, review, revert or import changes (and `define_attribute`,
 `seed_starter_data`, `plan_usage`) also include `_perf` (`ms` spent inside the procedure and `sql`
 statements run), which helps when diagnosing slow calls.
@@ -118,7 +122,7 @@ date or an unknown code) is marked `FAILED` with the reason, and the others are 
 | `core.check_ai()` | admin | Whether the app can call Cortex `AI_EMBED` (one embedding of a few tokens): `available`, `enabled` (the `ai_suggestions_enabled` setting), `model`, `region`; when not available, Snowflake's `error` and the GRANT that usually fixes it (`fix`) - or, on a Snowflake trial account, `trial` = true and no `fix` (Snowflake doesn't offer AI functions on trials) |
 | `core.set_approval_policy(container_type, name, policy)` | admin | `policy`: `DEFAULT`, `REQUIRED` or `NOT_REQUIRED` |
 | `core.set_stewards(container_type, name, stewards)` | admin | Array of Snowflake user names allowed to change it; empty array = any Steward |
-| `core.define_attribute(code_set, attr_name, label, data_type, is_required, max_length, allowed_values, ref_code_set, sort_order)` | admin | Create or update a typed attribute. `data_type`: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `REFERENCE` |
+| `core.define_attribute(code_set, attr_name, label, data_type, is_required, max_length, allowed_values, ref_code_set, sort_order, scale DEFAULT NULL)` | admin | Create or update a typed attribute. `data_type`: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `REFERENCE`. `scale` (NUMBER only, 0-37): the most decimal places a value may have; **Use in SQL** then reads it as `NUMBER(38, scale)` |
 | `core.set_attribute_status(code_set, attr_name, status)` | admin | Retire or reactivate an attribute definition |
 | `core.managed_sources()` | admin | Tables added to the `managed_tables` reference: `source` (DATABASE.SCHEMA.NAME), `alias`, the name it is registered under (`table_name`, NULL if not yet) and its `columns` (name, type, nullable, has_default, supported) |
 | `core.register_managed_table(table_name, source, key_columns, editable_columns, audit_columns, allow_insert, allow_delete, description)` | admin | Register or update a managed table: key and editable columns (arrays of column names, any case), `audit_columns` `PARSE_JSON('{"updated_by": "<column>", ...}')` (keys `created_by`, `created_at`, `updated_by`, `updated_at`; `{}` for none), whether Stewards may add / delete rows. The key columns can't change while the table has pending changes |

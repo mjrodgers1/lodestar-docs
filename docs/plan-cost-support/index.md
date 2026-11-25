@@ -1,7 +1,7 @@
 ---
 layout: docs
 title: "Plan, cost and support"
-description: "Telemetry, the trial and plan, running cost, uninstalling and support."
+description: "Telemetry, what leaves your account, the trial and plan, running cost, uninstalling and support."
 permalink: /docs/plan-cost-support/
 sidebar: docs
 prev_url: /docs/sql-reference/
@@ -14,20 +14,29 @@ prev_title: "SQL reference"
 
 The app shares **error and warning logs** with the provider (mandatory) so we can detect and fix
 failures. Snowflake adds your organisation and account name, account locator, region and the app
-version to each event. A message names the procedure and the problem; a rejected change usually names
-what it was about - the code set, mapping set, hierarchy or managed table, the code or row key, the
-attribute or column, and sometimes the value that was refused or the allowed values (for example
-"currency: GBP is not a valid CURRENCY code"). An unexpected error includes Snowflake's error message,
-which can quote a value involved, and a stack trace of the app's code. The app never logs whole rows,
-pasted rows or uploaded files, comments, email addresses, or your users' names (a message that names stewards in the
-console is logged with only their number). If your codes or row keys are themselves personal data (for
-example employee numbers), they can appear in these messages. **INFO usage logs** are optional and off
-by default: per call, the time taken and the number of statements, and per review the number of changes
-approved, rejected, failed and skipped. Event sharing
+version to each event. Since 1.2.0 the messages carry only fixed text, counts, the app's own ids, the
+procedure's name, the type of an error and Snowflake's numeric error code (e.g. `submit_changes failed:
+ProgrammingError 002003 (02000)`) - never an error's text, which can quote a value, and never your codes,
+row keys, values, set or column names, comments, email addresses or your users' names. A refused change
+is logged only as refused (the person who made it sees why). The full error is shown to the person who made
+the call and kept in the app's tables in your account (a failed change's `apply_error`, a check's
+`error`). **INFO usage logs** are optional and off by default: per call, the time taken and the number of
+statements, and per review the number of changes approved, rejected, failed and skipped. Event sharing
 requires an active event table in your account.
 The app doesn't request traces or agent telemetry, so questions asked of its Cortex Agent or MCP server
 and their answers stay in your account. Privacy notice:
 https://www.lodestardataservices.com/privacy/
+
+## What leaves your account {#what-leaves-your-account}
+
+| Where | What | Who sees it |
+|---|---|---|
+| The app's tables, in your account | Code sets, mappings, hierarchies, their history, change requests, comments, the audit trail, check results, settings | Your users, through the app's roles |
+| Your managed tables | Approved changes are written to them | Whoever you grant access to them |
+| Error and warning logs, shared with us | Fixed messages, counts, procedure names, error types and Snowflake's error codes, plus your organisation, account and app version (see [Telemetry](#telemetry)) | Us (the provider) |
+| Emails (optional, sent by Snowflake) | Set names, counts, statuses, the reviewer's comment and who acted | The verified users in your account they go to |
+| AI mapping suggestions (optional) | Codes and descriptions, embedded by Snowflake Cortex `AI_EMBED` in your account - or in another Snowflake region if your account allows cross-region inference (`CORTEX_ENABLED_CROSS_REGION`) | Snowflake; nothing reaches us |
+| The Cortex Agent and MCP server (if you use them) | Answers built from the reference data the asking user may read | That user, in Snowflake CoWork or the MCP client they connect (e.g. Claude, Cursor) - the client's own terms then apply |
 
 ## Trial and plan {#trial-and-plan}
 
@@ -80,6 +89,14 @@ management -> Budgets).
 `DROP APPLICATION <app> CASCADE;` removes the app, all of its data and the account-level objects
 it owns (its warehouse). Export anything you need first, e.g.
 `CREATE TABLE my_db.my_schema.lds_codes AS SELECT * FROM <app>.core.code_values_history;`
+Your managed tables are yours and stay as they are.
+
+**Retention and backup.** Everything the app keeps is in your account, and we hold no copy, so we can't
+restore it. Versions, change requests, comments and the audit trail are kept for as long as the app is
+installed; scheduled-check runs for 400 days (unscheduling a check deletes its runs). Your backup is a
+copy of the published views on a schedule that matches your recovery-point objective - e.g. a task running
+the `CREATE TABLE ... AS SELECT` above for `code_values_history`, `mappings_history`, `hierarchy_edges_history`
+and `audit_log`; Snowflake's own durability covers the rest.
 
 ## Support {#support}
 

@@ -7,5 +7,7 @@
   url: /lodestar-privacy/docs/using-the-app/
 - title: "SQL reference"
   url: /lodestar-privacy/docs/sql-reference/
+- title: "Operations and data flows"
+  url: /lodestar-privacy/docs/operations/
 - title: "Plan, cost and support"
   url: /lodestar-privacy/docs/plan-cost-support/
